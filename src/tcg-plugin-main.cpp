@@ -45,16 +45,19 @@ extern "C" {
 #include "tcg.h"
 #include "tcg-op.h"
 #include "tcg-plugin.h"
+#include "tcg-llvm.h"
 
 static void tpi_after_gen_tb(const TCGPluginInterface *tpi)
 {
-	
+    tcg_llvm_gen_code(tcg_llvm_ctx, tpi->tcg_ctx, tpi->tb);
 }
 
 void tpi_init(TCGPluginInterface *tpi)
 {
     TPI_INIT_VERSION(*tpi);
     tpi->after_gen_tb = tpi_after_gen_tb;
+	
+    tcg_llvm_ctx = tcg_llvm_initialize();
 }
 
 } /* extern "C" */

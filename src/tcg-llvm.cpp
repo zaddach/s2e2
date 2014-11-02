@@ -125,6 +125,7 @@ using llvm::ArrayRef;
 using llvm::APInt;
 using llvm::ReturnInst;
 using llvm::llvm_start_multithreaded;
+using llvm::raw_string_ostream;
 namespace Intrinsic = llvm::Intrinsic;
 
 
@@ -295,9 +296,9 @@ public:
         llvm::errs() << *v << '\n';
         assert(false && "Not a constant");
     }
-#ifdef CONFIG_S2E
-    void initializeHelpers();
-#endif
+// #ifdef CONFIG_S2E
+//     void initializeHelpers();
+// #endif
 
     BasicBlock* getLabel(int idx);
     void delLabel(int idx);
@@ -452,47 +453,47 @@ TCGLLVMContextPrivate::~TCGLLVMContextPrivate()
     }
 }
 
-#ifdef CONFIG_S2E
-void TCGLLVMContextPrivate::initializeHelpers()
-{
-    m_helperTraceMemoryAccess =
-            m_module->getFunction("tcg_llvm_trace_memory_access");
-
-    m_helperTraceInstruction =
-            m_module->getFunction("tcg_llvm_trace_instruction");
-
-    m_helperForkAndConcretize =
-            m_module->getFunction("tcg_llvm_fork_and_concretize");
-
-    m_helperMakeSymbolic =
-            m_module->getFunction("tcg_llvm_make_symbolic");
-    m_helperGetValue =
-            m_module->getFunction("tcg_llvm_get_value");
-
-    m_qemu_ld_helpers[0] = m_module->getFunction("__ldb_mmu");
-    m_qemu_ld_helpers[1] = m_module->getFunction("__ldw_mmu");
-    m_qemu_ld_helpers[2] = m_module->getFunction("__ldl_mmu");
-    m_qemu_ld_helpers[3] = m_module->getFunction("__ldq_mmu");
-    m_qemu_ld_helpers[4] = m_module->getFunction("__ldq_mmu");
-
-    m_qemu_st_helpers[0] = m_module->getFunction("__stb_mmu");
-    m_qemu_st_helpers[1] = m_module->getFunction("__stw_mmu");
-    m_qemu_st_helpers[2] = m_module->getFunction("__stl_mmu");
-    m_qemu_st_helpers[3] = m_module->getFunction("__stq_mmu");
-    m_qemu_st_helpers[4] = m_module->getFunction("__stq_mmu");
-
-    assert(m_helperTraceMemoryAccess);
-// XXX: is this really not needed on ARM?
-#ifndef TARGET_ARM
-    assert(m_helperMakeSymbolic);
-#endif
-    assert(m_helperGetValue);
-    for(int i = 0; i < 5; ++i) {
-        assert(m_qemu_ld_helpers[i]);
-        assert(m_qemu_st_helpers[i]);
-    }
-}
-#endif
+// #ifdef CONFIG_S2E
+// void TCGLLVMContextPrivate::initializeHelpers()
+// {
+//     m_helperTraceMemoryAccess =
+//             m_module->getFunction("tcg_llvm_trace_memory_access");
+//
+//     m_helperTraceInstruction =
+//             m_module->getFunction("tcg_llvm_trace_instruction");
+//
+//     m_helperForkAndConcretize =
+//             m_module->getFunction("tcg_llvm_fork_and_concretize");
+//
+//     m_helperMakeSymbolic =
+//             m_module->getFunction("tcg_llvm_make_symbolic");
+//     m_helperGetValue =
+//             m_module->getFunction("tcg_llvm_get_value");
+//
+//     m_qemu_ld_helpers[0] = m_module->getFunction("__ldb_mmu");
+//     m_qemu_ld_helpers[1] = m_module->getFunction("__ldw_mmu");
+//     m_qemu_ld_helpers[2] = m_module->getFunction("__ldl_mmu");
+//     m_qemu_ld_helpers[3] = m_module->getFunction("__ldq_mmu");
+//     m_qemu_ld_helpers[4] = m_module->getFunction("__ldq_mmu");
+//
+//     m_qemu_st_helpers[0] = m_module->getFunction("__stb_mmu");
+//     m_qemu_st_helpers[1] = m_module->getFunction("__stw_mmu");
+//     m_qemu_st_helpers[2] = m_module->getFunction("__stl_mmu");
+//     m_qemu_st_helpers[3] = m_module->getFunction("__stq_mmu");
+//     m_qemu_st_helpers[4] = m_module->getFunction("__stq_mmu");
+//
+//     assert(m_helperTraceMemoryAccess);
+// // XXX: is this really not needed on ARM?
+// #ifndef TARGET_ARM
+//     assert(m_helperMakeSymbolic);
+// #endif
+//     assert(m_helperGetValue);
+//     for(int i = 0; i < 5; ++i) {
+//         assert(m_qemu_ld_helpers[i]);
+//         assert(m_qemu_st_helpers[i]);
+//     }
+// }
+// #endif
 
 Value* TCGLLVMContextPrivate::getPtrForValue(int idx)
 {
@@ -803,6 +804,8 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGArg *args)
     TCGOpDef &def = tcg_op_defs[opc];
     int nb_args = def.nb_args;
 
+    std::cout << "Translation TCG op " << tcg_op_defs[opc].name << std::endl;
+
     switch(opc) {
     case INDEX_op_debug_insn_start:
         break;
@@ -848,13 +851,11 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGArg *args)
             llvm::Type* retType = nb_oargs == 0 ?
                 llvm::Type::getVoidTy(m_context) : wordType(getValueBits(args[1]));
 
-            Value* helperAddr = getValue(args[nb_oargs + nb_iargs]);
+            tcg_target_ulong helperAddrC = args[nb_oargs + nb_iargs + 1];
             Value* result;
 
             if (!execute_llvm) {
                 //Generate this in S2E mode
-                tcg_target_ulong helperAddrC = (tcg_target_ulong)
-                       cast<ConstantInt>(helperAddr)->getZExtValue();
                 assert(helperAddrC);
 
                 const char *helperName = plgapi_get_helper_name(m_tcgContext, 
@@ -881,8 +882,8 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGArg *args)
                         FunctionType::get(retType, argTypes, false), 0);
 
                 Value* funcAddr = m_builder.CreateIntToPtr(
-                        //ConstantInt::get(wordType(), (uint64_t) tcg_llvm_helper_wrapper),
-                        helperAddr,
+                		//TODO: sizeof ugly here
+                        ConstantInt::get(intType(sizeof(tcg_target_ulong) * 8), helperAddrC),
                         helperFunctionPtrTy);
 
                 result = m_builder.CreateCall(funcAddr,
@@ -1356,7 +1357,11 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGArg *args)
 
 void TCGLLVMContextPrivate::generateCode(TCGContext *s, TranslationBlock *tb)
 {
-    /* Create new function for current translation block */
+	std::cerr << "TCGLLVMContextPrivate::generateCode(s = 0x" << std::hex << (uint64_t) s << ", tb = 0x" << std::hex << (uint64_t) tb << ")" << std::endl;
+
+//	asm ("int3");
+
+	/* Create new function for current translation block */
     /* TODO: compute the checksum of the tb to see if we can reuse some code */
     std::ostringstream fName;
     fName << "tcg-llvm-tb-" << (m_tbCount++) << "-" << std::hex << tb->pc;
@@ -1434,9 +1439,7 @@ void TCGLLVMContextPrivate::generateCode(TCGContext *s, TranslationBlock *tb)
     //KLEE will optimize the function later
     //m_functionPassManager->run(*m_tbFunction);
     
-    assert(!tb->tcg_plugin_opaque);
-    
-    tb->tcg_plugin_opaque = static_cast<void *>(new TCGPluginTBData());
+    assert(tb->tcg_plugin_opaque);
 
     static_cast<TCGPluginTBData *>(tb->tcg_plugin_opaque)->llvm_function = m_tbFunction;
 
@@ -1450,6 +1453,12 @@ void TCGLLVMContextPrivate::generateCode(TCGContext *s, TranslationBlock *tb)
         static_cast<TCGPluginTBData *>(tb->tcg_plugin_opaque)->llvm_tc_ptr = 0;
         static_cast<TCGPluginTBData *>(tb->tcg_plugin_opaque)->llvm_tc_end = 0;
     }
+
+    std::string fcnString;
+    raw_string_ostream ss(fcnString);
+
+    ss << *m_tbFunction;
+    std::cout << "LLVM Function: " << fcnString << std::endl;
     /*
 #ifdef DEBUG_DISAS
     if (unlikely(qemu_loglevel_mask(CPU_LOG_TB_OP))) {
@@ -1474,8 +1483,9 @@ void TCGLLVMContextPrivate::generateCode(TCGContext *s, TranslationBlock *tb)
 /* External interface for C++ code */
 
 TCGLLVMContext::TCGLLVMContext()
-        : m_private(new TCGLLVMContextPrivate)
+        : m_private(new TCGLLVMContextPrivate())
 {
+	std::cout << "TCGLLVMContext::TCGLLVMContext: m_private = 0x" << std::hex << (uint64_t) m_private << std::endl;
 }
 
 TCGLLVMContext::~TCGLLVMContext()
@@ -1517,10 +1527,14 @@ void TCGLLVMContext::initializeHelpers()
 
 void TCGLLVMContext::generateCode(TCGContext *s, TranslationBlock *tb)
 {
-    assert(static_cast<TCGPluginTBData *>(tb->tcg_plugin_opaque)->tcg_llvm_context == NULL);
-    assert(static_cast<TCGPluginTBData *>(tb->tcg_plugin_opaque)->llvm_function == NULL);
+    assert(tb->tcg_plugin_opaque == NULL);
+//    assert(static_cast<TCGPluginTBData *>(tb->tcg_plugin_opaque)->tcg_llvm_context == NULL);
+//    assert(static_cast<TCGPluginTBData *>(tb->tcg_plugin_opaque)->llvm_function == NULL);
+    
+    TCGPluginTBData *plugin_data = new TCGPluginTBData();
+    tb->tcg_plugin_opaque = static_cast<void *>(plugin_data);
+    plugin_data->tcg_llvm_context = this;
 
-    static_cast<TCGPluginTBData *>(tb->tcg_plugin_opaque)->tcg_llvm_context = this;
     m_private->generateCode(s, tb);
 }
 
@@ -1529,10 +1543,10 @@ void TCGLLVMContext::generateCode(TCGContext *s, TranslationBlock *tb)
 
 TCGLLVMContext* tcg_llvm_initialize()
 {
-    if (!llvm_start_multithreaded()) {
-        fprintf(stderr, "Could not initialize LLVM threading\n");
-        exit(-1);
-    }
+    // if (!llvm_start_multithreaded()) {
+    //     fprintf(stderr, "Could not initialize LLVM threading\n");
+    //     exit(-1);
+    // }
     return new TCGLLVMContext;
 }
 
@@ -1560,7 +1574,7 @@ void tcg_llvm_tb_free(TranslationBlock *tb)
 }
 
 #ifndef CONFIG_S2E
-int tcg_llvm_search_last_pc(TranslationBlock *tb, uintptr_t searched_pc)
+int tcg_llvm_search_last_pc(TranslationBlock *tb, CPUArchState *env, uintptr_t searched_pc)
 {
     assert(static_cast<TCGPluginTBData *>(tb->tcg_plugin_opaque)->llvm_function && tb == tcg_llvm_runtime.last_tb);
     return tcg_llvm_runtime.last_opc_index;
@@ -1578,16 +1592,14 @@ const char* tcg_llvm_get_func_name(TranslationBlock *tb)
     return buf;
 }
 
-uintptr_t tcg_llvm_qemu_tb_exec(void *env1, TranslationBlock *tb)
+uintptr_t tcg_llvm_qemu_tb_exec(CPUArchState *env, TranslationBlock *tb)
 {
 #ifndef CONFIG_S2E
     tcg_llvm_runtime.last_tb = tb;
 #endif
-    extern CPUArchState *env;
-    env = (CPUArchState*)env1;
     uintptr_t next_tb;
 
-    next_tb = ((uintptr_t (*)(void*)) static_cast<TCGPluginTBData *>(tb->tcg_plugin_opaque)->llvm_tc_ptr)(&env);
+    next_tb = ((uintptr_t (*)(void*)) static_cast<TCGPluginTBData *>(tb->tcg_plugin_opaque)->llvm_tc_ptr)(env);
 
 #if 0
 //#ifndef CONFIG_S2E
