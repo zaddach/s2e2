@@ -724,6 +724,8 @@ inline Value* TCGLLVMContextPrivate::generateQemuMemOp(bool ld,
     assert(ld || value->getType() == intType(bits));
     assert(TCG_TARGET_REG_BITS == 64); //XXX
 
+    //TOOD: Continue debugging here
+
 #ifdef CONFIG_SOFTMMU
 
 #if  defined(CONFIG_LLVM)
