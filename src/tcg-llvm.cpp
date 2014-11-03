@@ -769,8 +769,10 @@ inline Value* TCGLLVMContextPrivate::generateQemuMemOp(bool ld,
             return NULL;
         }
     }
-#endif
-#endif
+#endif //CONFIG_S2E
+#else //CONFIG_LLVM
+#error CONFIG_LLVM must be active if CONFIG_SOFTMMU is active to compile memory operations generation as
+#endif //CONFIG_LLVM
 
 #else // CONFIG_SOFTMMU
     addr = m_builder.CreateZExt(addr, wordType());
