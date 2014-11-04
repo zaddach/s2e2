@@ -1023,7 +1023,7 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGArg *args)
                     v, intType(regBits)));                          \
         break;
 
-#ifdef TARGET_ARM
+//#ifdef TARGET_ARM
 
 #define __ST_OP(opc_name, memBits, regBits)                         \
     case opc_name:  {                                                 \
@@ -1031,11 +1031,11 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGArg *args)
         assert(getValue(args[1])->getType() == wordType());         \
         Value* valueToStore = getValue(args[0]);                    \
                                                                     \
-        if (TARGET_LONG_BITS == memBits && !execute_llvm            \
+/*        if (TARGET_LONG_BITS == memBits && !execute_llvm            \
             && args[1] == 0                                         \
             && args[2] == offsetof(CPUARMState, regs[15])) {        \
             valueToStore = handleSymbolicPcAssignment(valueToStore);\
-        }                                                           \
+        }    */                                                       \
                                                                     \
         v = m_builder.CreateAdd(getValue(args[1]),                  \
                     ConstantInt::get(wordType(), args[2]));         \
@@ -1044,28 +1044,28 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGArg *args)
                 valueToStore, intType(memBits)), v);           \
     } break;
 
-#elif defined(TARGET_I386)
-
-#define __ST_OP(opc_name, memBits, regBits)                         \
-    case opc_name:  {                                                 \
-        assert(getValue(args[0])->getType() == intType(regBits));   \
-        assert(getValue(args[1])->getType() == wordType());         \
-        Value* valueToStore = getValue(args[0]);                    \
-                                                                    \
-        if (TARGET_LONG_BITS == memBits && !execute_llvm            \
-            && args[1] == 0                                         \
-            && args[2] == offsetof(CPUX86State, eip)) { \
-            valueToStore = handleSymbolicPcAssignment(valueToStore);\
-        }                                                           \
-                                                                    \
-        v = m_builder.CreateAdd(getValue(args[1]),                  \
-                    ConstantInt::get(wordType(), args[2]));         \
-        v = m_builder.CreateIntToPtr(v, intPtrType(memBits));       \
-        m_builder.CreateStore(m_builder.CreateTrunc(                \
-                valueToStore, intType(memBits)), v);           \
-    } break;
-
-#endif
+//#elif defined(TARGET_I386)
+//
+//#define __ST_OP(opc_name, memBits, regBits)                         \
+//    case opc_name:  {                                                 \
+//        assert(getValue(args[0])->getType() == intType(regBits));   \
+//        assert(getValue(args[1])->getType() == wordType());         \
+//        Value* valueToStore = getValue(args[0]);                    \
+//                                                                    \
+//        if (TARGET_LONG_BITS == memBits && !execute_llvm            \
+//            && args[1] == 0                                         \
+//            && args[2] == offsetof(CPUX86State, eip)) { \
+//            valueToStore = handleSymbolicPcAssignment(valueToStore);\
+//        }                                                           \
+//                                                                    \
+//        v = m_builder.CreateAdd(getValue(args[1]),                  \
+//                    ConstantInt::get(wordType(), args[2]));         \
+//        v = m_builder.CreateIntToPtr(v, intPtrType(memBits));       \
+//        m_builder.CreateStore(m_builder.CreateTrunc(                \
+//                valueToStore, intType(memBits)), v);           \
+//    } break;
+//
+//#endif
 
 
     __LD_OP(INDEX_op_ld8u_i32,   8, 32, Z)

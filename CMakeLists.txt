@@ -20,6 +20,81 @@ SET ( CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-undefined,dyn
 SET ( LLVM_TRANSLATOR_SRC 
 	src/tcg-llvm.cpp
 	src/tcg-plugin-main.cpp)
+
+MACRO  ( GENERATE_HELPER_FILE helper_file target_arch target_base_arch )
+    IF ( EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/src/helper_lib/target-${target_base_arch}/op_helper_llvm.c )
+        SET ( HELPER_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/src/helper_lib/target-${target_base_arch}/op_helper_llvm.c )
+    ELSE ()
+        SET ( OP_HELPER_DIR ${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/${OP_HELPER_LIB_NAME}.dir )
+        SET ( HELPER_LIST_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/src/helper_lib/helper_list.c )
+        SET ( HELPER_LIST_PROCESSED ${OP_HELPER_DIR}/helper_list.i )
+        SET ( HELPER_SOURCE ${OP_HELPER_DIR}/op_helper_llvm.c )
+
+        #Build list of include directories
+        GET_PROPERTY ( INC_DIRS DIRECTORY PROPERTY INCLUDE_DIRECTORIES )
+        SET ( INCLUDE_DIRECTORIES )
+        FOREACH (DIRECTORY ${INC_DIRS})
+            LIST ( APPEND INCLUDE_DIRECTORIES -I${DIRECTORY} )
+        ENDFOREACH ()
+        LIST ( APPEND INCLUDE_DIRECTORIES -I${QEMU_SOURCE}/target-${target_base_arch} )
+        LIST ( APPEND INCLUDE_DIRECTORIES -I${QEMU_BUILD}/${target_arch} )
+
+        #Build list of definitions
+        GET_PROPERTY ( COMP_DEFS DIRECTORY PROPERTY COMPILE_DEFINITIONS )
+        SET ( COMPILE_DEFINITIONS )
+        FOREACH ( DEFINITION ${COMP_DEFS} )
+            LIST ( APPEND COMPILE_DEFINITIONS -D${DEFINITION} )
+        ENDFOREACH ()
+
+        ADD_CUSTOM_COMMAND (
+            OUTPUT ${HELPER_LIST_PROCESSED}
+            COMMAND ${CMAKE_C_COMPILER} ${INCLUDE_DIRECTORIES} ${COMPILE_DEFINITIONS} -E -o "${HELPER_LIST_PROCESSED}" "${HELPER_LIST_SOURCE}" 
+            DEPENDS src/helper_lib/helper_list.c ${QEMU_SOURCE}/target-${target_base_arch}/helper.h
+            VERBATIM )
+        ADD_CUSTOM_COMMAND ( 
+            OUTPUT "${HELPER_SOURCE}"
+            COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/scripts/generate_helper.sh "${HELPER_LIST_PROCESSED}" "${HELPER_SOURCE}"
+            WORKING_DIRECTORY "${QEMU_SOURCE}/target-${target_base_arch}"
+            DEPENDS ${HELPER_LIST_PROCESSED} )
+    ENDIF ()
+
+    SET_PROPERTY ( SOURCE ${HELPER_SOURCE} APPEND PROPERTY INCLUDE_DIRECTORIES 
+        "${QEMU_SOURCE}/target-${QEMU_TARGET_BASE_ARCH}" "${QEMU_BUILD}/${QEMU_TARGET_DIRECTORY}" )
+    ADD_BITCODE (${helper_file}   ${HELPER_SOURCE})
+    
+ENDMACRO ()
+    
+#    SET_PROPERTY ( SOURCE 
+#    EXECUTE_PROCESS ( 
+#            COMMAND ${CMAKE_C_COMPILER} 
+#             OUTPUT_FILE ${OP_HELPER_SOURCE} 
+#             WORKING_DIRECTORY ${QEMU_SOURCE}/target-${QEMU_TARGET_BASE_ARCH} )
+# FUNCTION ( GenerateOpHelperFile )
+#     SET ( OP_HELPER_DIR ${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/${OP_HELPER_LIB_NAME}.dir )
+#     SET ( OP_HELPER_LIST ${OP_HELPER_DIR}/op_helpers.list )
+#     GET_PROPERTY ( TARGET 
+#     FILE ( WRITE ${OP_HELPER_LIST} "#define DEF_HELPER_1(a,b,c) a")
+#     FILE ( APPEND ${OP_HELPER_LIST} "#define DEF_HELPER_2(a,b,c,d) a")
+#     FILE ( APPEND ${OP_HELPER_LIST} "#define DEF_HELPER_3(a,b,c,d,e) a")
+#     FILE ( APPEND ${OP_HELPER_LIST} "#define DEF_HELPER_4(a,b,c,d,e,f) a")
+#     FILE ( APPEND ${OP_HELPER_LIST} "#define DEF_HELPER_5(a,b,c,d,e,f,g) a")
+#     FILE ( APPEND ${OP_HELPER_LIST} "#define DEF_HELPER_6(a,b,c,d,e,f,g,h) a")
+#     FILE ( APPEND ${OP_HELPER_LIST} "#define DEF_HELPER_FLAGS_1(a,b,c,d) a")
+#     FILE ( APPEND ${OP_HELPER_LIST} "#define DEF_HELPER_FLAGS_2(a,b,c,d,e) a")
+#     FILE ( APPEND ${OP_HELPER_LIST} "#define DEF_HELPER_FLAGS_3(a,b,c,d,e,f) a")
+#     FILE ( APPEND ${OP_HELPER_LIST} "#define DEF_HELPER_FLAGS_4(a,b,c,d,e,f,g) a")
+#     FILE ( APPEND ${OP_HELPER_LIST} "#define DEF_HELPER_FLAGS_5(a,b,c,d,e,f,g,h) a")
+#     FILE ( APPEND ${OP_HELPER_LIST} "#define DEF_HELPER_FLAGS_6(a,b,c,d,e,f,g,h,i) a")
+#     FILE ( APPEND ${OP_HELPER_LIST} "#include "helpers.h")  
+#      EXECUTE_PROCESS ( 
+#             COMMAND ${CMAKE_CXX_COMPILER} ${OP_HELPER_LIST}
+#             OUTPUT_FILE ${OP_HELPER_SOURCE} 
+#             WORKING_DIRECTORY ${QEMU_SOURCE}/target-${QEMU_TARGET_BASE_ARCH} )
+#     EXECUTE_PROCESS ( 
+#             COMMAND ${CMAKE_SOURCE_DIR}/scripts/generate_helper.sh ${OP_HELPER_LIST}
+#             OUTPUT_FILE ${OP_HELPER_SOURCE} 
+#             WORKING_DIRECTORY ${QEMU_SOURCE}/target-${QEMU_TARGET_BASE_ARCH} )
+# ENDFUNCTION  ( GenerateOpHelperFile )
     
     
 FOREACH ( QEMU_TARGET ${QEMU_TARGETS} )
@@ -40,21 +115,43 @@ FOREACH ( QEMU_TARGET ${QEMU_TARGETS} )
     
     # Build the LLVM helper library
     SET ( OP_HELPER_LIB_NAME op_helper-${QEMU_TARGET_DIRECTORY} )
-    SET ( OP_HELPER_SOURCE ${QEMU_SOURCE}/target-${QEMU_TARGET_BASE_ARCH}/op_helper.c )
+    SET ( OP_HELPER_DIR ${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/${OP_HELPER_LIB_NAME}.dir )
+    SET ( OP_HELPER_SOURCE${OP_HELPER_DIR}/op_helper.c )
     
     #If the op_helper.c file does not exist (currently for i386) we need to generate it
     #TODO: It would be nicer to have a target for that
-    IF ( NOT EXISTS ${OP_HELPER_SOURCE} )
-        SET ( OP_HELPER_SOURCE ${CMAKE_BINARY_DIR}/CMakeFiles/${OP_HELPER_LIB_NAME}.dir/op_helper.c )
-        EXECUTE_PROCESS ( 
-            COMMAND ${CMAKE_SOURCE_DIR}/scripts/generate_helper.sh 
-            OUTPUT_FILE ${OP_HELPER_SOURCE} 
-            WORKING_DIRECTORY ${QEMU_SOURCE}/target-${QEMU_TARGET_BASE_ARCH} )
-    ENDIF ()
-    SET_PROPERTY ( SOURCE ${OP_HELPER_SOURCE} APPEND PROPERTY INCLUDE_DIRECTORIES
-        "${QEMU_SOURCE}/target-${QEMU_TARGET_BASE_ARCH}" "${QEMU_BUILD}/${QEMU_TARGET_DIRECTORY}" )
-    ADD_BITCODE ( ${OP_HELPER_LIB_NAME} ${OP_HELPER_SOURCE} )
-    SET_PROPERTY ( TARGET ${OP_HELPER_LIB_NAME} APPEND PROPERTY INCLUDE_DIRECTORIES 
-        "${QEMU_SOURCE}/target-${QEMU_TARGET_BASE_ARCH}" "${QEMU_BUILD}/${QEMU_TARGET_DIRECTORY}" )
+#     IF ( EXISTS ${QEMU_SOURCE}/target-${QEMU_TARGET_BASE_ARCH}/op_helper.c )
+#         SET ( OP_HELPER_SOURCE ${QEMU_SOURCE}/target-${QEMU_TARGET_BASE_ARCH}/op_helper.c )
+#     ELSEIF ( EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/qemu/target-${QEMU_TARGET_BASE_ARCH}/op_helper.c )
+#         SET ( OP_HELPER_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/qemu/target-${QEMU_TARGET_BASE_ARCH}/op_helper.c )
+#     ELSE ()
+#         SET ( OP_HELPER_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/${OP_HELPER_LIB_NAME}.dir )
+#         IF ( NOT EXISTS ${OP_HELPER_DIRECTORY} )
+#             FILE ( MAKE_DIRECTORY ${OP_HELPER_DIRECTORY} )
+#         ENDIF ()
+#         
+#         SET ( OP_HELPER_SOURCE ${OP_HELPER_DIRECTORY}/op_helper.c )
+#         MESSAGE ( STATUS "Generating op_helper.c source file for target ${QEMU_TARGET_DIRECTORY} LLVM bitcode library ...")
+#         EXECUTE_PROCESS ( 
+#             COMMAND ${CMAKE_SOURCE_DIR}/scripts/generate_helper.sh 
+#             OUTPUT_FILE ${OP_HELPER_SOURCE} 
+#             WORKING_DIRECTORY ${QEMU_SOURCE}/target-${QEMU_TARGET_BASE_ARCH} )
+#     ENDIF ()
+#     SET_PROPERTY ( SOURCE ${OP_HELPER_SOURCE} APPEND PROPERTY INCLUDE_DIRECTORIES
+#         "${QEMU_SOURCE}/target-${QEMU_TARGET_BASE_ARCH}" "${QEMU_BUILD}/${QEMU_TARGET_DIRECTORY}" )
+
+
+    #Preprocess helper file to get helper names for this target architecture only
+    GENERATE_HELPER_FILE (${OP_HELPER_LIB_NAME} "${OP_HELPER_DIRECTORY}" "${QEMU_TARGET_BASE_ARCH}" )
+#     SET ( OP_HELPER_LIST_FILE ${OP_HELPER_DIRECTORY}/helper_list.i )
+#     
+#     EXECUTE_PROCESS ( 
+#              COMMAND ${CMAKE_C_COMPILER} ${OP_HELPER_DIRECTORY}/
+#              OUTPUT_FILE ${OP_HELPER_SOURCE} 
+#              WORKING_DIRECTORY ${QEMU_SOURCE}/target-${QEMU_TARGET_BASE_ARCH} )
+#     ADD_BITCODE ( ${OP_HELPER_LIB_NAME} ${OP_HELPER_SOURCE} )
+#    ADD_BITCODE ( ${OP_HELPER_LIB_NAME} ${OP_HELPER_SOURCE} )
+#    SET_PROPERTY ( TARGET ${OP_HELPER_LIB_NAME} APPEND PROPERTY INCLUDE_DIRECTORIES 
+#        "${QEMU_SOURCE}/target-${QEMU_TARGET_BASE_ARCH}" "${QEMU_BUILD}/${QEMU_TARGET_DIRECTORY}" )
         
 ENDFOREACH ()

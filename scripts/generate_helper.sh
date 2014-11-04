@@ -1,16 +1,14 @@
 #!/bin/sh
 
-HELPER_FUNCTIONS=$( cat helper.h | grep DEF_HELPER | sed -E -e 's/^.*\(([^,]*),.*$/\1/' )
-INCLUDE_DIRECTIVES=""
-for HELPER in ${HELPER_FUNCTIONS}
-do 
-    SOURCE_FILES=$( grep "helper_${HELPER}(" *.c | grep -v gen_ | cut -d: -f1 )
-    for SOURCE_FILE in ${SOURCE_FILES}
-    do
-        INCLUDE_DIRECTIVE=$( echo ${SOURCE_FILE} | sed -E -e 's/^[[:space:]]*/#include "/;s/$/"/')
-        INCLUDE_DIRECTIVES="${INCLUDE_DIRECTIVES}\n${INCLUDE_DIRECTIVE}"
-    done
-done
+if [ x"$1" = x"" ] || [ x"$2" = x"" ]
+then
+    exit 1
+fi
 
-echo "${INCLUDE_DIRECTIVES}" | sort | uniq
+( 
+    for HELPER in $( cat "$1" | grep -v -E '^(#.*)?$' )
+    do 
+        grep "helper_${HELPER}(" *.c | grep -v gen_ | cut -d: -f1
+    done 
+) | sort | uniq | sed -E -e 's/^/#include "/;s/$/"/' > "$2"
 
