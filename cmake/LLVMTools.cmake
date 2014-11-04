@@ -78,23 +78,22 @@ foreach(srcfile ${ARGN})
     
     list ( REMOVE_DUPLICATES INCLUDE_DIRECTORIES )
     
-    get_filename_component(outfile ${srcfile}.${target} NAME)
+    get_filename_component(outfile ${srcfile} NAME)
     get_filename_component(infile ${srcfile} ABSOLUTE)
+    
+    set ( outfile CMakeFiles/${target}.dir/${outfile}.bc )
 
     ## the command to generate the bitcode for this file
-    add_custom_command(OUTPUT ${outfile}.bc
+    add_custom_command(OUTPUT ${outfile}
       COMMAND ${src_bc_compiler} -emit-llvm ${srcdefs} ${srcflags} ${srcincludes}
-        -c ${infile} -o ${outfile}.bc
+        -c ${infile} -o ${outfile}
       DEPENDS ${infile}
       COMMENT "Building LLVM bitcode ${outfile}.bc"
       VERBATIM
     )
-    set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES ${outfile}.bc)
-    
-    
 
     ## keep track of every bitcode file we need to create
-    list(APPEND bcfiles ${outfile}.bc)
+    list(APPEND bcfiles ${outfile})
 endforeach(srcfile)
 
 ## link all the bitcode files together to the target
