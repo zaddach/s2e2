@@ -76,7 +76,7 @@ foreach(srcfile ${ARGN})
         list(APPEND srcincludes -I${DIRECTORY})
     endforeach()
     
-    list ( REMOVE_DUPLICATES INCLUDE_DIRECTORIES )
+#    list ( REMOVE_DUPLICATES INCLUDE_DIRECTORIES )
     
     get_filename_component(outfile ${srcfile} NAME)
     get_filename_component(infile ${srcfile} ABSOLUTE)
