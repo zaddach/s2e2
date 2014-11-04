@@ -157,20 +157,28 @@ find_program(LLVM_BC_C_COMPILER NAMES clang PATHS ${LLVM_EXECUTABLES_PATHS} )
 find_program(LLVM_BC_CXX_COMPILER NAMES clang++  PATHS ${LLVM_EXECUTABLES_PATHS} )
 find_program(LLVM_BC_AR NAMES llvm-ar llvm-ar-mp-3.6 llvm-ar-mp-3.5 llvm-ar-mp-3.4 
     llvm-ar-mp-3.3 llvm-ar-mp-3.2 llvm-ar-mp-3.1 llvm-ar-mp-3.0
+    llvm-ar-3.6 llvm-ar-3.5 llvm-ar-3.4 llvm-ar-3.3 llvm-ar-3.2 llvm-ar-3.1 llvm-ar-3.0
      PATHS ${LLVM_EXECUTABLES_PATHS} )
 find_program(LLVM_BC_RANLIB NAMES llvm-ranlib llvm-ranlib-mp-3.6 llvm-ranlib-mp-3.5
     llvm-ranlib-mp-3.4 llvm-ranlib-mp-3.3 llvm-ranlib-mp-3.2 llvm-ranlib-mp-3.1
     llvm-ranlib-mp-3.0
+    llvm-ranlib-3.6 llvm-ranlib-3.5 llvm-ranlib-3.4 llvm-ranlib-3.3 llvm-ranlib-3.2
+    llvm-ranlib-3.1 llvm-ranlib-3.0
      PATHS ${LLVM_EXECUTABLES_PATHS} )
 find_program(LLVM_BC_LINK NAMES llvm-link llvm-link-mp-3.6 llvm-link-mp-3.5 llvm-link-mp-3.4
     llvm-link-mp-3.3 llvm-link-mp-3.2 llvm-link-mp-3.1 llvm-link-mp-3.0
+    llvm-link-3.6 llvm-link-3.5 llvm-link-3.4 llvm-link-3.3 llvm-link-3.2 llvm-link-3.1 
+    llvm-link-3.0
      PATHS ${LLVM_EXECUTABLES_PATHS} )
 find_program(LLVM_BC_ANALYZER NAMES llvm-bcanalyzer llvm-bcanalyzer-mp-3.6 llvm-bcanalyzer-mp-3.5
     llvm-bcanalyzer-mp-3.4 llvm-bcanalyzer-mp-3.3 llvm-bcanalyzer-mp-3.2 llvm-bcanalyzer-mp-3.1
     llvm-bcanalyzer-mp-3.0
+    llvm-bcanalyzer-3.6 llvm-bcanalyzer-3.5 llvm-bcanalyzer-3.4 llvm-bcanalyzer-3.3
+    llvm-bcanalyzer-3.2 llvm-bcanalyzer-3.1 llvm-bcanalyzer-3.0
     PATHS ${LLVM_EXECUTABLES_PATHS} )
 find_program(LLVM_BC_OPT NAMES opt opt-mp-3.6 opt-mp-3.5 opt-mp-3.4 opt-mp-3.3 opt-mp-3.2
     opt-mp-3.1 opt-mp-3.0 
+    opt-3.6 opt-3.5 opt-3.4 opt-3.3 opt-3.2 opt-3.1 opt-3.0
     PATHS ${LLVM_EXECUTABLES_PATHS} )
 
 if (NOT (LLVM_BC_C_COMPILER AND LLVM_BC_CXX_COMPILER AND LLVM_BC_AR AND
