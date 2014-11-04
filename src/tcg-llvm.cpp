@@ -177,6 +177,9 @@ struct TCGLLVMContextPrivate {
     /* Function pass manager (used for optimizing the code) */
     FunctionPassManager *m_functionPassManager;
 
+    Function* m_qemu_ld_helpers[5];
+    Function* m_qemu_st_helpers[5];
+
 #ifdef CONFIG_S2E
     /* Declaration of a wrapper function for helpers */
     Function *m_helperTraceMemoryAccess;
@@ -184,8 +187,6 @@ struct TCGLLVMContextPrivate {
     Function *m_helperForkAndConcretize;
     Function *m_helperMakeSymbolic;
     Function *m_helperGetValue;
-    Function* m_qemu_ld_helpers[5];
-    Function* m_qemu_st_helpers[5];
 #endif
 
     /* Count of generated translation blocks */
@@ -296,9 +297,8 @@ public:
         llvm::errs() << *v << '\n';
         assert(false && "Not a constant");
     }
-// #ifdef CONFIG_S2E
-//     void initializeHelpers();
-// #endif
+
+    void initializeHelpers();
 
     BasicBlock* getLabel(int idx);
     void delLabel(int idx);
@@ -453,9 +453,8 @@ TCGLLVMContextPrivate::~TCGLLVMContextPrivate()
     }
 }
 
-// #ifdef CONFIG_S2E
-// void TCGLLVMContextPrivate::initializeHelpers()
-// {
+void TCGLLVMContextPrivate::initializeHelpers()
+{
 //     m_helperTraceMemoryAccess =
 //             m_module->getFunction("tcg_llvm_trace_memory_access");
 //
@@ -470,17 +469,17 @@ TCGLLVMContextPrivate::~TCGLLVMContextPrivate()
 //     m_helperGetValue =
 //             m_module->getFunction("tcg_llvm_get_value");
 //
-//     m_qemu_ld_helpers[0] = m_module->getFunction("__ldb_mmu");
-//     m_qemu_ld_helpers[1] = m_module->getFunction("__ldw_mmu");
-//     m_qemu_ld_helpers[2] = m_module->getFunction("__ldl_mmu");
-//     m_qemu_ld_helpers[3] = m_module->getFunction("__ldq_mmu");
-//     m_qemu_ld_helpers[4] = m_module->getFunction("__ldq_mmu");
-//
-//     m_qemu_st_helpers[0] = m_module->getFunction("__stb_mmu");
-//     m_qemu_st_helpers[1] = m_module->getFunction("__stw_mmu");
-//     m_qemu_st_helpers[2] = m_module->getFunction("__stl_mmu");
-//     m_qemu_st_helpers[3] = m_module->getFunction("__stq_mmu");
-//     m_qemu_st_helpers[4] = m_module->getFunction("__stq_mmu");
+     m_qemu_ld_helpers[0] = m_module->getFunction("_helper_ldb_mmu");
+     m_qemu_ld_helpers[1] = m_module->getFunction("_helper_ldw_mmu");
+     m_qemu_ld_helpers[2] = m_module->getFunction("_helper_ldl_mmu");
+     m_qemu_ld_helpers[3] = m_module->getFunction("_helper_ldq_mmu");
+     m_qemu_ld_helpers[4] = m_module->getFunction("_helper_ldq_mmu");
+
+     m_qemu_st_helpers[0] = m_module->getFunction("_helper_stb_mmu");
+     m_qemu_st_helpers[1] = m_module->getFunction("_helper_stw_mmu");
+     m_qemu_st_helpers[2] = m_module->getFunction("_helper_stl_mmu");
+     m_qemu_st_helpers[3] = m_module->getFunction("_helper_stq_mmu");
+     m_qemu_st_helpers[4] = m_module->getFunction("_helper_stq_mmu");
 //
 //     assert(m_helperTraceMemoryAccess);
 // // XXX: is this really not needed on ARM?
@@ -492,8 +491,7 @@ TCGLLVMContextPrivate::~TCGLLVMContextPrivate()
 //         assert(m_qemu_ld_helpers[i]);
 //         assert(m_qemu_st_helpers[i]);
 //     }
-// }
-// #endif
+}
 
 Value* TCGLLVMContextPrivate::getPtrForValue(int idx)
 {
@@ -732,8 +730,8 @@ inline Value* TCGLLVMContextPrivate::generateQemuMemOp(bool ld,
 #if defined (CONFIG_S2E)
     if (execute_llvm) {
 #endif
-    uintptr_t helperFunc = ld ? (uint64_t) qemu_ld_helpers[bits>>4]:
-                           (uint64_t) qemu_st_helpers[bits>>4];
+    uintptr_t helperFunc = ld ? (uint64_t) m_qemu_ld_helpers[bits>>4]:
+                           (uint64_t) m_qemu_st_helpers[bits>>4];
 
 
     std::vector<Value*> argValues;
@@ -741,7 +739,7 @@ inline Value* TCGLLVMContextPrivate::generateQemuMemOp(bool ld,
     argValues.push_back(addr);
     if(!ld)
         argValues.push_back(value);
-    argValues.push_back(ConstantInt::get(intType(8*sizeof(int)), mem_index));
+    argValues.push_back(ConstantInt::get(intType(TARGET_LONG_BITS), mem_index));
 
     std::vector<llvm::Type*> argTypes;
     argTypes.reserve(3);
