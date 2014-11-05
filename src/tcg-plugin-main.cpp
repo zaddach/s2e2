@@ -1,8 +1,7 @@
 /*
- * TCG plugin for QEMU: simulate a IO memory mapped device (mainly
- *                      interesting to prototype things in user-mode).
+ * TCG plugin for QEMU: Translate TCG code to LLVM.
  *
- * Copyright (C) 2011 STMicroelectronics
+ * Copyright (C) 2014 Jonas Zaddach <zaddach@eurecom.fr>
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -25,14 +24,7 @@
  * SOFTWARE.
  */
 
-/* You can test this plugin in user-mode with the following code:
- *
- * int main(void)
- * {
- * 	char *device = mmap(0xCAFE0000, 1024, PROT_READ, MAP_FIXED | MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
- * 	return printf("printf(%p): %s\n", device, device);
- * }
- */
+#include "cxx11-compat.h"
 
 extern "C" {
 

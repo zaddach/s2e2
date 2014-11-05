@@ -33,6 +33,9 @@
  * All contributors are listed in the S2E-AUTHORS file.
  */
 
+
+#include "cxx11-compat.h"
+
 extern "C" {
 #include "tcg.h"
 #include "tcg-plugin-api.h"
