@@ -311,7 +311,7 @@ public:
     void generateTraceCall(uintptr_t pc);
     int generateOperation(int opc, const TCGArg *args);
 
-    Value *generateSetCond(TCGArg c, TCGArg v1, TCGArg v2);
+    inline Value *generateCondition(TCGCond cond, Value *arg1, Value *arg2);
     Value *generateAndC(TCGArg arg1, TCGArg arg2);
 
     void generateCode(TCGContext *s, TranslationBlock *tb);
@@ -803,66 +803,29 @@ void TCGLLVMContextPrivate::generateTraceCall(uintptr_t pc)
 #endif
 }
 
-Value *TCGLLVMContextPrivate::generateAndC(TCGArg arg1, TCGArg arg2)
+Value *TCGLLVMContextPrivate::generateCondition(TCGCond cond, Value *arg1, Value *arg2)
 {
-    return m_builder.CreateAnd(
-            getValue(arg1),
-            m_builder.CreateNot(getValue(arg2)));
-}
-
-Value *TCGLLVMContextPrivate::generateSetCond(TCGArg c, TCGArg v1, TCGArg v2)
-{
-    Value *arg1 = getValue(v1);
-    Value *arg2 = getValue(v2);
-    Value *result = 0;
-    const TCGCond cond = static_cast<TCGCond>(c);
-
     switch (cond)
     {
-    case TCG_COND_NEVER:
-        result = ConstantInt::getFalse(m_builder.getContext());
-        break;
-    case TCG_COND_ALWAYS:
-        result = ConstantInt::getTrue(m_builder.getContext());
-        break;
-    case TCG_COND_EQ:
-        result = m_builder.CreateICmpEQ(arg1, arg2);
-        break;
-    case TCG_COND_NE:
-        result = m_builder.CreateICmpNE(arg1, arg2);
-        break;
+    case TCG_COND_NEVER:  return ConstantInt::getFalse(m_builder.getContext());
+    case TCG_COND_ALWAYS: return ConstantInt::getTrue(m_builder.getContext());
+    case TCG_COND_EQ:     return m_builder.CreateICmpEQ(arg1, arg2);
+    case TCG_COND_NE:     return m_builder.CreateICmpNE(arg1, arg2);
             /* signed */
-    case TCG_COND_LT:
-        result = m_builder.CreateICmpSLT(arg1, arg2);
-        break;
-    case TCG_COND_GE:
-        result = m_builder.CreateICmpSGE(arg1, arg2);
-        break;
-    case TCG_COND_LE:
-        result = m_builder.CreateICmpSLE(arg1, arg2);
-        break;
-    case TCG_COND_GT:
-        result = m_builder.CreateICmpSGT(arg1, arg2);
-        break;
+    case TCG_COND_LT:     return m_builder.CreateICmpSLT(arg1, arg2);
+    case TCG_COND_GE:     return m_builder.CreateICmpSGE(arg1, arg2);
+    case TCG_COND_LE:     return m_builder.CreateICmpSLE(arg1, arg2);
+    case TCG_COND_GT:     return m_builder.CreateICmpSGT(arg1, arg2);
             /* unsigned */
-    case TCG_COND_LTU:
-        result = m_builder.CreateICmpULT(arg1, arg2);
-        break;
-    case TCG_COND_GEU:
-        result = m_builder.CreateICmpUGE(arg1, arg2);
-        break;
-    case TCG_COND_LEU:
-        result = m_builder.CreateICmpULE(arg1, arg2);
-        break;
-    case TCG_COND_GTU:
-        result = m_builder.CreateICmpUGT(arg1, arg2);
-        break;
+    case TCG_COND_LTU:    return m_builder.CreateICmpULT(arg1, arg2);
+    case TCG_COND_GEU:    return m_builder.CreateICmpUGE(arg1, arg2);
+    case TCG_COND_LEU:    return m_builder.CreateICmpULE(arg1, arg2);
+    case TCG_COND_GTU:    return m_builder.CreateICmpUGT(arg1, arg2);
     default:
-        assert(false && "Unknown condition code for TCG op setcond_i32");
-        break;
+        llvm::errs() << "ERROR: Unknown condition code " << cond << " in TCG code" << '\n';
+        tcg_abort();
+        return 0;
     }
-
-    return result;
 }
 
 int TCGLLVMContextPrivate::generateOperation(int opc, const TCGArg *args)
@@ -870,8 +833,6 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGArg *args)
     Value *v;
     TCGOpDef &def = tcg_op_defs[opc];
     int nb_args = def.nb_args;
-
-    std::cout << "Translation TCG op " << tcg_op_defs[opc].name << std::endl;
 
     switch(opc) {
     case INDEX_op_debug_insn_start:
@@ -1412,8 +1373,8 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGArg *args)
     break;
 #endif
     case INDEX_op_setcond_i32: {
-        Value *result = generateSetCond(args[3], args[1], args[2]);
-        setValue(args[0], m_builder.CreateIntCast(result, intType(TARGET_LONG_BITS), false));
+        Value *result = generateCondition(static_cast<TCGCond>(args[3]), getValue(args[1]), getValue(args[2]));
+        setValue(args[0], m_builder.CreateSExt(result, intType(32)));
         break;
     }
     case INDEX_op_add2_i32: {
@@ -1443,8 +1404,8 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGArg *args)
         break;
     }
     case INDEX_op_movcond_i32: {
-        Value *t0 = m_builder.CreateZExt(
-                generateSetCond(args[5], args[1], args[2]),
+        Value *t0 = m_builder.CreateSExt(
+                generateCondition(static_cast<TCGCond>(args[5]), getValue(args[1]), getValue(args[2])),
                 intType(32));
         Value *v1 = getValue(args[3]);
         Value *v2 = getValue(args[4]);
