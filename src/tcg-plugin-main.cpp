@@ -26,6 +26,10 @@
 
 #include "cxx11-compat.h"
 
+#include <string>
+#include <llvm/Support/raw_ostream.h>
+#include <llvm/IR/Function.h>
+
 extern "C" {
 
 #include <stdint.h>
@@ -39,9 +43,21 @@ extern "C" {
 #include "tcg-plugin.h"
 #include "tcg-llvm.h"
 
+
+
 static void tpi_after_gen_tb(const TCGPluginInterface *tpi)
 {
     tcg_llvm_gen_code(tcg_llvm_ctx, tpi->tcg_ctx, tpi->tb);
+
+    assert(tpi->tb->tcg_plugin_opaque);
+
+    std::string fcnString;
+    llvm::raw_string_ostream ss(fcnString);
+
+    llvm::Function *function = static_cast<TCGPluginTBData *>(tpi->tb->tcg_plugin_opaque)->llvm_function;
+    ss << *function;
+    ss.flush();
+    fprintf(tpi->output, "%s", fcnString.c_str());
 }
 
 void tpi_init(TCGPluginInterface *tpi)
