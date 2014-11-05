@@ -138,6 +138,14 @@ public:
                       struct TranslationBlock *tb);
 };
 
+struct TCGPluginTBData
+{
+    llvm::Function *llvm_function;
+    uint8_t * llvm_tc_ptr;
+    uint8_t * llvm_tc_end;
+    TCGLLVMContext *tcg_llvm_context;
+};
+
 #endif
 
 #endif

@@ -136,14 +136,6 @@ namespace Intrinsic = llvm::Intrinsic;
 //TODO: Hack to make stuff compile
 static const bool execute_llvm = false;
 
-struct TCGPluginTBData
-{
-    Function *llvm_function;
-    uint8_t * llvm_tc_ptr;
-    uint8_t * llvm_tc_end;
-    TCGLLVMContext *tcg_llvm_context;
-};
-
 //#undef NDEBUG
 
 extern "C" {
@@ -1271,8 +1263,7 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGArg *args)
     }
     case INDEX_op_qemu_st_i64: {
         const int bitsize = (1 << (args[2] | MO_SIZE)) << 3;
-        //TODO:
-        std::cout << "TODO: implement INDEX_op_qemu_st_i64" << std::endl;
+        tcg_abort(); //TODO: Implement
         break;
     }
     case INDEX_op_qemu_ld_i32: {
@@ -1291,8 +1282,7 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGArg *args)
     }
     case INDEX_op_qemu_ld_i64: {
         const int bitsize = (1 << (args[2] | MO_SIZE)) << 3;
-        std::cout << "TODO: implement INDEX_op_qemu_ld_i64" << std::endl;
-        break;
+        tcg_abort(); //TODO: Implement
         break;
     }
 
@@ -1432,10 +1422,6 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGArg *args)
 
 void TCGLLVMContextPrivate::generateCode(TCGContext *s, TranslationBlock *tb)
 {
-	std::cerr << "TCGLLVMContextPrivate::generateCode(s = 0x" << std::hex << (uint64_t) s << ", tb = 0x" << std::hex << (uint64_t) tb << ")" << std::endl;
-
-//	asm ("int3");
-
 	/* Create new function for current translation block */
     /* TODO: compute the checksum of the tb to see if we can reuse some code */
     std::ostringstream fName;
@@ -1560,7 +1546,6 @@ void TCGLLVMContextPrivate::generateCode(TCGContext *s, TranslationBlock *tb)
 TCGLLVMContext::TCGLLVMContext()
         : m_private(new TCGLLVMContextPrivate())
 {
-	std::cout << "TCGLLVMContext::TCGLLVMContext: m_private = 0x" << std::hex << (uint64_t) m_private << std::endl;
 }
 
 TCGLLVMContext::~TCGLLVMContext()
