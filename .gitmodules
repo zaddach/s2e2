@@ -1,0 +1,6 @@
+[submodule "qemu"]
+	path = qemu
+	url = https://github.com/eurecom-s3/qemu
+[submodule "klee"]
+	path = klee
+    url = https://github.com/eurecom-s3/klee
