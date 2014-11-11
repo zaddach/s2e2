@@ -1,0 +1,104 @@
+# Calls Qemu configure script and then harvests the generated Makefiles for information
+# Takes the following input:
+# - QEMU_TARGET_LIST : A list of targets to build (i.e., arm-softmmu;i386-softmmu)
+# Exports the following variables:
+# - QEMU_TARGETS : A list of targets. Each entry is a ; - separated tuple of 
+#      base architecture, target name, architecture (i.e., arm;aarch64-softmmu;aarch64)
+# - QEMU_SOURCE : Qemu's source directory
+# - QEMU_BUILD : Qemu's binary directory
+# - QEMU_INCLUDE_DIRECTORIES : List of include directories that Qemu uses. 
+#      Needed to build the LLVM libraries of helpers.
+
+SET ( QEMU_CONFIGURE_FLAGS )
+LIST ( APPEND QEMU_CONFIGURE_FLAGS --enable-tcg-plugin )
+LIST ( APPEND QEMU_CONFIGURE_FLAGS --cc=${CMAKE_C_COMPILER} )
+LIST ( APPEND QEMU_CONFIGURE_FLAGS --cxx=${CMAKE_CXX_COMPILER} )
+LIST ( APPEND QEMU_CONFIGURE_FLAGS --prefix=${PROJECT_BINARY_DIR}/qemu-install )
+IF ( "${CMAKE_BUILD_TYPE}" STREQUAL "Debug" )
+    LIST ( APPEND QEMU_CONFIGURE_FLAGS --enable-debug )
+ENDIF ()
+IF ( QEMU_TARGET_LIST )
+    STRING ( REPLACE ";" "," QEMU_TARGETS_STRING "${QEMU_TARGET_LIST}" )
+    LIST ( APPEND QEMU_CONFIGURE_FLAGS --target-list=${QEMU_TARGETS_STRING} )
+ENDIF ()
+
+SET ( QEMU_SOURCE ${PROJECT_SOURCE_DIR}/qemu )
+SET ( QEMU_BUILD ${PROJECT_BINARY_DIR}/qemu )
+
+FILE ( MAKE_DIRECTORY ${QEMU_BUILD} )
+EXECUTE_PROCESS ( 
+    COMMAND ${PROJECT_SOURCE_DIR}/qemu/configure ${QEMU_CONFIGURE_FLAGS}
+    WORKING_DIRECTORY ${QEMU_BUILD} )
+
+
+IF ( NOT EXISTS ${QEMU_BUILD}/config-host.mak )
+    MESSAGE ( FATAL_ERROR "Cannot find config-host.mak in your Qemu build directory after running configure." )
+ENDIF ()
+
+# Find architecture for which TCG is built
+FILE ( STRINGS ${QEMU_BUILD}/config-host.mak QEMU_LINES REGEX "QEMU_INCLUDES=" )
+STRING ( REGEX REPLACE "^.*/tcg/([0-9a-z_-]+) -I.*$" "\\1" QEMU_TCG_ARCH ${QEMU_LINES} ) 
+
+# Find targets for which are built
+FILE ( STRINGS ${QEMU_BUILD}/config-host.mak QEMU_LINES REGEX "TARGET_DIRS=" )
+STRING ( REPLACE "TARGET_DIRS=" "" QEMU_LINES_2 "${QEMU_LINES}" )
+STRING ( REPLACE " " ";" QEMU_TARGET_DIRS "${QEMU_LINES_2}" )
+SET ( QEMU_EXECUTABLES )
+FOREACH ( QEMU_TARGET_DIR ${QEMU_TARGET_DIRS} )
+    FILE ( STRINGS ${QEMU_BUILD}/${QEMU_TARGET_DIR}/config-target.mak QEMU_LINES REGEX "TARGET_BASE_ARCH=" )
+    STRING ( REPLACE "TARGET_BASE_ARCH=" "" QEMU_BASE_ARCH ${QEMU_LINES} )
+    FILE ( STRINGS ${QEMU_BUILD}/${QEMU_TARGET_DIR}/config-target.mak QEMU_LINES REGEX "TARGET_NAME=" )
+    STRING ( REPLACE "TARGET_NAME=" "" QEMU_ARCH ${QEMU_LINES} )
+    LIST ( APPEND QEMU_TARGETS "${QEMU_BASE_ARCH},${QEMU_TARGET_DIR},${QEMU_ARCH}" )
+    LIST ( APPEND QEMU_EXECUTABLES "${QEMU_BUILD}/${QEMU_TARGET_DIR}/qemu-system-${QEMU_ARCH}" )
+ENDFOREACH ( QEMU_TARGET_DIR ${QEMU_TARGET_DIRS} )
+
+#TODO: Improve above to get right source and build directories for each target
+#SET ( QEMU_TARGET_ARCHITECTURES "i386" "arm" )
+
+FILE ( STRINGS ${QEMU_BUILD}/config-host.mak QEMU_LINES REGEX "QEMU_INCLUDES=" )
+STRING ( REPLACE "QEMU_INCLUDES="  "" QEMU_LINES_2 ${QEMU_LINES} )
+STRING ( REPLACE "$(SRC_PATH)" "${QEMU_SOURCE}" QEMU_INCLUDES ${QEMU_LINES_2} )
+STRING ( REPLACE "-I" ";" QEMU_INCLUDE_DIRECTORIES ${QEMU_INCLUDES} ) #${QEMU_SOURCE}/tcg ${QEMU_SOURCE}/include ${QEMU_BUILD} ${QEMU_SOURCE}/tcg/${QEMU_TCG_ARCH} )
+LIST ( APPEND QEMU_INCLUDE_DIRECTORIES ${QEMU_BUILD} )
+
+FILE ( STRINGS ${QEMU_BUILD}/config-host.mak QEMU_LINES REGEX "GTK_CFLAGS=" )
+STRING ( REPLACE "GTK_CFLAGS="  "" QEMU_LINES_2 "${QEMU_LINES}" )
+STRING ( REPLACE " " ";" QEMU_GTK_FLAGS "${QEMU_LINES_2}" )
+FOREACH ( GTK_FLAG ${QEMU_GTK_FLAGS} )
+    IF ( ${GTK_FLAG} MATCHES "^-I.*" )
+        STRING ( REGEX REPLACE "^-I" "" INCLUDE_DIR ${GTK_FLAG} )
+        LIST ( APPEND QEMU_INCLUDE_DIRECTORIES ${INCLUDE_DIR} )
+    ENDIF ()
+ENDFOREACH ()
+
+FILE ( STRINGS ${QEMU_BUILD}/config-host.mak QEMU_LINES REGEX "QEMU_CFLAGS=" )
+STRING ( REPLACE "QEMU_CFLAGS="  "" QEMU_LINES "${QEMU_LINES}" )
+STRING ( REPLACE "$(SRC_PATH)" "${QEMU_SOURCE}" QEMU_LINES "${QEMU_LINES}" )
+STRING ( REPLACE " " ";" QEMU_CFLAGS "${QEMU_LINES}" )
+FOREACH ( C_FLAG ${QEMU_CFLAGS} )
+    IF ( ${C_FLAG} MATCHES "^-I.*" )
+        STRING ( REGEX REPLACE "^-I" "" INCLUDE_DIR ${C_FLAG} )
+        LIST ( APPEND QEMU_INCLUDE_DIRECTORIES ${INCLUDE_DIR} )
+    ENDIF ()
+ENDFOREACH ()
+
+# ADD_CUSTOM_COMMAND ( OUTPUT ${QEMU_EXECUTABLES}
+#     COMMAND make -j8
+#     WORKING_DIRECTORY ${QEMU_BUILD}
+#     COMMENT "Build Qemu"
+#     VERBATIM)
+
+ADD_CUSTOM_TARGET ( build-qemu 
+    COMMAND make -j8
+    WORKING_DIRECTORY ${QEMU_BUILD}
+    COMMENT "Build Qemu"
+    VERBATIM)
+
+MARK_AS_ADVANCED ( 
+        QEMU_LINES
+        QEMU_LINES_2
+        QEMU_TCG_ARCH
+        QEMU_TARGET_DIRS
+        QEMU_TARGET_DIR
+        QEMU_TARGET_ARCH )
