@@ -27,11 +27,12 @@
 # We also want an user-specified LLVM_ROOT_DIR to take precedence over the
 # system default locations such as /usr/local/bin. Executing find_program()
 # multiples times is the approach recommended in the docs.
-set(llvm_config_names llvm-config-3.5 llvm-config35 llvm-config-mp-3.5
-                      llvm-config-3.4 llvm-config34 llvm-config-mp-3.4
-                      llvm-config-3.3 llvm-config33 llvm-config-mp-3.3
-                      llvm-config-3.2 llvm-config32 llvm-config-mp-3.2
-                      llvm-config-3.1 llvm-config31 llvm-config-mp-3.1
+set(llvm_config_names 
+#                     llvm-config-3.5 llvm-config35 llvm-config-mp-3.5
+#                      llvm-config-3.4 llvm-config34 llvm-config-mp-3.4
+#                      llvm-config-3.3 llvm-config33 llvm-config-mp-3.3
+#                      llvm-config-3.2 llvm-config32 llvm-config-mp-3.2
+#                      llvm-config-3.1 llvm-config31 llvm-config-mp-3.1
                       llvm-config)
 find_program(LLVM_CONFIG
     NAMES ${llvm_config_names}
@@ -107,7 +108,7 @@ else()
             ${_quiet_arg}
         )
         string(REGEX REPLACE "([$^.[|*+?()]|])" "\\\\\\1" pattern ${prefix})
-        string(REGEX MATCHALL "${pattern}[^ ]+" LLVM_${var} ${tmplibs})
+        string(REGEX MATCHALL "${pattern}[^ ]+" LLVM_${var} "${tmplibs}")
     endmacro()
 
     llvm_set(VERSION_STRING version)
