@@ -16,6 +16,8 @@ SET ( CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake" )
 FIND_PACKAGE ( LLVM 3.4 REQUIRED )
 FIND_PACKAGE ( GLIB REQUIRED )
 FIND_PACKAGE ( Curses REQUIRED )
+FIND_PACKAGE ( SigC++ REQUIRED )
+FIND_PACKAGE ( Lua REQUIRED )
 
 INCLUDE ( ExternalProject REQUIRED )
 INCLUDE ( cmake/LLVMTools.cmake )
@@ -24,13 +26,14 @@ INCLUDE ( cmake/LLVMTools.cmake )
 #################
 
 ADD_SUBDIRECTORY ( klee )
+INCLUDE_DIRECTORIES ( klee/include ${PROJECT_BINARY_DIR}/klee/include )
 
 INCLUDE ( cmake/Qemu.cmake )
 
 # Build instructions
 ####################
 
-INCLUDE_DIRECTORIES ( include ${QEMU_INCLUDE_DIRECTORIES} ${LLVM_INCLUDE_DIRS} ${GLIB_INCLUDE_DIRS} )
+INCLUDE_DIRECTORIES ( include ${QEMU_INCLUDE_DIRECTORIES} ${LLVM_INCLUDE_DIRS} ${GLIB_INCLUDE_DIRS} ${SIGC++_INCLUDE_DIRS} ${LUA_INCLUDE_DIR} )
 ADD_DEFINITIONS ( -DNEED_CPU_H -D__STDC_CONSTANT_MACROS -D__STDC_LIMIT_MACROS -DCONFIG_LLVM )
 SET ( CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-undefined,dynamic_lookup" )
 SET ( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11" )
@@ -38,6 +41,20 @@ SET ( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11" )
 SET ( LLVM_TRANSLATOR_SRC 
 	src/tcgplugin/tcg-llvm.cpp
 	src/tcgplugin/tcg-plugin-main.cpp)
+
+SET ( S2E_SRC
+	src/s2e/ConfigFile.cpp
+	src/s2e/ExprInterface.cpp
+	src/s2e/MMUFunctionHandlers.cpp
+	src/s2e/Plugin.cpp
+	src/s2e/S2E.cpp
+	src/s2e/S2EDeviceState.cpp
+	src/s2e/S2EExecutionState.cpp
+	src/s2e/S2EExecutor.cpp
+	src/s2e/S2EStatsTracker.cpp
+	src/s2e/SelectRemovalPass.cpp
+	src/s2e/Slab.cpp
+	src/s2e/Synchronization.cpp )
 
 MACRO  ( GENERATE_HELPER_FILE helper_file target_arch target_base_arch )
     IF ( EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/src/helper_lib/target-${target_base_arch}/op_helper_llvm.c )
@@ -109,7 +126,7 @@ FOREACH ( QEMU_TARGET ${QEMU_TARGETS} )
     # Build the TCG plugin
 	SET ( CURRENT_LIB_NAME ${LIBRARY_NAME}-${QEMU_TARGET_DIRECTORY} )
 
-    ADD_LIBRARY ( ${CURRENT_LIB_NAME} SHARED ${LLVM_TRANSLATOR_SRC} )
+    ADD_LIBRARY ( ${CURRENT_LIB_NAME} SHARED ${LLVM_TRANSLATOR_SRC}  ${S2E_SRC} )
 	TARGET_LINK_LIBRARIES ( ${CURRENT_LIB_NAME} ${LLVM_LIBRARIES} ${CURSES_LIBRARY} )
     ADD_DEPENDENCIES ( ${CURRENT_LIB_NAME} build-qemu )
 	SET_PROPERTY ( TARGET ${CURRENT_LIB_NAME} APPEND PROPERTY INCLUDE_DIRECTORIES 
