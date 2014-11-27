@@ -36,8 +36,8 @@ SET ( CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-undefined,dyn
 SET ( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11" )
 
 SET ( LLVM_TRANSLATOR_SRC 
-	src/tcg-llvm.cpp
-	src/tcg-plugin-main.cpp)
+	src/tcgplugin/tcg-llvm.cpp
+	src/tcgplugin/tcg-plugin-main.cpp)
 
 MACRO  ( GENERATE_HELPER_FILE helper_file target_arch target_base_arch )
     IF ( EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/src/helper_lib/target-${target_base_arch}/op_helper_llvm.c )

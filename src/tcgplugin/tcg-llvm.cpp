@@ -34,14 +34,14 @@
  */
 
 
-#include "cxx11-compat.h"
+#include "tcgplugin/cxx11-compat.h"
 
 extern "C" {
 #include "tcg.h"
 #include "tcg-plugin-api.h"
 }
 
-#include "tcg-llvm.h"
+#include "tcgplugin/tcg-llvm.h"
 
 extern "C" {
 #include "config.h"

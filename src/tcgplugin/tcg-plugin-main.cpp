@@ -24,7 +24,7 @@
  * SOFTWARE.
  */
 
-#include "cxx11-compat.h"
+#include "tcgplugin/cxx11-compat.h"
 
 #include <string>
 #include <llvm/Support/raw_ostream.h>
@@ -41,7 +41,7 @@ extern "C" {
 #include "tcg.h"
 #include "tcg-op.h"
 #include "tcg-plugin.h"
-#include "tcg-llvm.h"
+#include "tcgplugin/tcg-llvm.h"
 
 
 
