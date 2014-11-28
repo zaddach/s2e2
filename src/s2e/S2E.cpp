@@ -55,6 +55,7 @@ extern "C" {
 #include <qemu-common.h>
 #include <sysemu/sysemu.h>
 #include <sysemu/cpus.h>
+#include <qemu/main-loop.h>
 extern CPUArchState *env;
 }
 

@@ -37,10 +37,6 @@
 
 #define _S2E_DEVICE_STATE_H_
 
-extern "C" {
-#include "hw/hw.h"
-}
-
 #include <vector>
 #include <map>
 #include <set>
@@ -66,7 +62,8 @@ private:
     static std::set<std::string> s_customDevices;
     static bool s_devicesInited;
 
-    static QEMUFile *s_memFile;
+    struct QEMUFile *m_memFile;
+    struct QEMUFileOps *m_fileOps; //Is a pointer to hide QEMUFileOps structure from other users of this header
 
     /* Scratch buffer for the first snapshot */
     static uint8_t *s_tempStateBuffer;
@@ -88,6 +85,8 @@ private:
 
     void initFirstSnapshot();
 
+    static int getBufferInternal(void *opaque, uint8_t *buf, int64_t pos, int size);
+    static int putBufferInternal(void *opaque, uint8_t const *buf, int64_t pos, int size);
 public:
     S2EDeviceState(klee::ExecutionState *state);
     S2EDeviceState(const S2EDeviceState &state);
