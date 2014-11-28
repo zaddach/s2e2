@@ -34,22 +34,23 @@
  *
  */
 
+#include <tcgplugin/cxx11-compat.h>
+
 extern "C" {
 #include <qemu-common.h>
-#include <cpu-all.h>
-#include <cpu.h>
-#include <exec-all.h>
+#include <exec/cpu-all.h>
+#include <exec/exec-all.h>
 #include "cpu.h"
 extern CPUArchState *env;
 }
 
-#include "S2EExecutor.h"
-#include "S2EExecutionState.h"
-#include "S2E.h"
+#include "s2e/S2EExecutor.h"
+#include "s2e/S2EExecutionState.h"
+#include "s2e/S2E.h"
 #include <s2e/Plugins/CorePlugin.h>
 #include <s2e/s2e_qemu.h>
 
-#include <llvm/Module.h>
+#include <llvm/IR/Module.h>
 
 using namespace klee;
 
@@ -69,12 +70,12 @@ namespace s2e {
 
 //This is an io_write_chkX_mmu function
 static void io_write_chk(S2EExecutionState *state,
-                             target_phys_addr_t physaddr,
+                             target_ulong physaddr,
                              ref<Expr> val,
                              target_ulong addr,
                              void *retaddr, Expr::Width width)
 {
-    target_phys_addr_t origaddr = physaddr;
+    target_ulong origaddr = physaddr;
     MemoryRegion *mr = iotlb_to_region(physaddr);
 
     physaddr = (physaddr & TARGET_PAGE_MASK) + addr;
@@ -124,12 +125,12 @@ static void io_write_chk(S2EExecutionState *state,
 
 //This is an io_read_chkX_mmu function
 static ref<Expr> io_read_chk(S2EExecutionState *state,
-                             target_phys_addr_t physaddr,
+        target_ulong physaddr,
                              target_ulong addr,
                              void *retaddr, Expr::Width width)
 {
     ref<Expr> res;
-    target_phys_addr_t origaddr = physaddr;
+    target_ulong origaddr = physaddr;
     MemoryRegion *mr = iotlb_to_region(physaddr);
 
     target_ulong naddr = (physaddr & TARGET_PAGE_MASK)+addr;
@@ -306,7 +307,7 @@ ref<Expr> S2EExecutor::handle_ldst_mmu(Executor* executor,
     target_ulong object_index, index;
     ref<Expr> value;
     target_ulong tlb_addr, addr1, addr2;
-    target_phys_addr_t addend, ioaddr;
+    target_ulong addend, ioaddr;
     void *retaddr = NULL;
 
     if (isWrite) {

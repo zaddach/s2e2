@@ -246,6 +246,8 @@ public:
 
 };
 
+extern S2E *g_s2e;
+
 } // namespace s2e
 
 #endif // S2E_H

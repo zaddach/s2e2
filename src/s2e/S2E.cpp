@@ -34,17 +34,33 @@
  */
 
 // XXX: qemu stuff should be included before anything from KLEE or LLVM !
+
+#include <tcgplugin/cxx11-compat.h>
+
+#include <llvm/Support/FileSystem.h>
+#include <llvm/Support/Path.h>
+#include <llvm/Support/CommandLine.h>
+#include <llvm/Support/raw_os_ostream.h>
+#include <llvm/Support/raw_ostream.h>
+
+#include <llvm/IR/Module.h>
+#include <llvm/ExecutionEngine/ExecutionEngine.h>
+#include <llvm/Bitcode/ReaderWriter.h>
+
+
+#include <klee/Interpreter.h>
+#include <klee/Common.h>
+
 extern "C" {
 #include <qemu-common.h>
-#include <cpus.h>
-#include <main-loop.h>
-#include <sysemu.h>
+#include <sysemu/sysemu.h>
+#include <sysemu/cpus.h>
 extern CPUArchState *env;
 }
 
-#include <tcg-llvm.h>
+#include <tcgplugin/tcg-llvm.h>
 
-#include "S2E.h"
+#include <s2e/S2E.h>
 
 #include <s2e/Plugin.h>
 #include <s2e/Plugins/CorePlugin.h>
@@ -54,19 +70,6 @@ extern CPUArchState *env;
 #include <s2e/S2EExecutionState.h>
 
 #include <s2e/s2e_qemu.h>
-#include <llvm/Support/FileSystem.h>
-#include <llvm/Support/Path.h>
-#include <llvm/Support/CommandLine.h>
-#include <llvm/Support/raw_os_ostream.h>
-#include <llvm/Support/raw_ostream.h>
-
-#include <llvm/Module.h>
-#include <llvm/ExecutionEngine/ExecutionEngine.h>
-#include <llvm/Bitcode/ReaderWriter.h>
-
-
-#include <klee/Interpreter.h>
-#include <klee/Common.h>
 
 #include <iostream>
 #include <sstream>
@@ -273,7 +276,7 @@ void S2E::writeBitCodeToFile()
 {
     std::string error;
     std::string fileName = getOutputFilename("module.bc");
-    llvm::raw_fd_ostream o(fileName.c_str(), error, llvm::raw_fd_ostream::F_Binary);
+    llvm::raw_fd_ostream o(fileName.c_str(), error, llvm::sys::fs::F_Binary);
 
     llvm::Module *module = m_tcgLLVMContext->getModule();
 
@@ -284,8 +287,9 @@ void S2E::writeBitCodeToFile()
 S2E::~S2E()
 {
     //Delete all the stuff used by the instance
-    foreach(Plugin* p, m_activePluginsList)
+    for ( Plugin *p : m_activePluginsList ) {
         delete p;
+    }
 
     //Tell other instances we are dead so they can fork more
     S2EShared *shared = m_sync.acquire();
@@ -339,8 +343,8 @@ Plugin* S2E::getPlugin(const std::string& name) const
 
 std::string S2E::getOutputFilename(const std::string &fileName)
 {
-    llvm::sys::Path filePath(m_outputDirectory);
-    filePath.appendComponent(fileName);
+    llvm::SmallString<4096> filePath(m_outputDirectory);
+    llvm::sys::path::append(filePath, fileName);
     return filePath.str();
 }
 
@@ -348,7 +352,7 @@ llvm::raw_ostream* S2E::openOutputFile(const std::string &fileName)
 {
     std::string path = getOutputFilename(fileName);
     std::string error;
-    llvm::raw_fd_ostream *f = new llvm::raw_fd_ostream(path.c_str(), error, llvm::raw_fd_ostream::F_Binary);
+    llvm::raw_fd_ostream *f = new llvm::raw_fd_ostream(path.c_str(), error, llvm::sys::fs::F_Binary);
 
     if (!f || error.size()>0) {
         llvm::errs() << "Error opening " << path << ": " << error << "\n";
@@ -363,20 +367,16 @@ void S2E::initOutputDirectory(const string& outputDirectory, int verbose, bool f
     if (!forked) {
         //In case we create the first S2E process
         if (outputDirectory.empty()) {
-            llvm::sys::Path cwd = llvm::sys::Path::GetCurrentDirectory();
 
             for (int i = 0; ; i++) {
                 ostringstream dirName;
                 dirName << "s2e-out-" << i;
 
-                llvm::sys::Path dirPath(cwd);
-                dirPath.appendComponent(dirName.str());
+                llvm::SmallString<4096> path(dirName.str());
+                llvm::sys::fs::make_absolute(path);
 
-                bool exists = false;
-                llvm::sys::fs::exists(dirPath.str(), exists);
-
-                if(!exists) {
-                    m_outputDirectory = dirPath.str();
+                if(!llvm::sys::fs::exists(path.str())) {
+                    m_outputDirectory = path.str();
                     break;
                 }
             }
@@ -394,48 +394,36 @@ void S2E::initOutputDirectory(const string& outputDirectory, int verbose, bool f
     if (m_maxProcesses > 1) {
         // Create one output directory per child process.
         // This prevents child processes from clobbering each other's output.
-        llvm::sys::Path dirPath(m_outputDirectory);
-
         ostringstream oss;
         oss << m_currentProcessIndex;
 
-        dirPath.appendComponent(oss.str());
-        bool exists = false;
-        llvm::sys::fs::exists(dirPath.str(), exists);
+        llvm::SmallString<4096> dirPath(m_outputDirectory);
+        llvm::sys::path::append(dirPath, oss.str());
 
-        assert(!exists);
+        assert(!llvm::sys::fs::exists(dirPath.str()));
         m_outputDirectory = dirPath.str();
     }
 #endif
 
     std::cout << "S2E: output directory = \"" << m_outputDirectory << "\"\n";
 
-    llvm::sys::Path outDir(m_outputDirectory);
-    std::string mkdirError;
-
-#ifdef _WIN32
-    //XXX: If set to true on Windows, it fails when parent directories exist
-    //For now, we assume that only the last component needs to be created
-    if (outDir.createDirectoryOnDisk(false, &mkdirError)) {
-#else
-    if (outDir.createDirectoryOnDisk(true, &mkdirError)) {
-#endif
-        std::cerr << "Could not create output directory " << outDir.str() <<
-                " error: " << mkdirError << '\n';
+    if (!llvm::sys::fs::create_directories(m_outputDirectory).success())
+    {
+        std::cerr << "Could not create output directory " << m_outputDirectory << '\n';
         exit(-1);
     }
 
 #ifndef _WIN32
     if (!forked) {
-        llvm::sys::Path s2eLast(".");
-        s2eLast.appendComponent("s2e-last");
+        llvm::SmallString<4096> s2eLast("s2e-last");
+        llvm::sys::fs::make_absolute(s2eLast);
 
-        if ((unlink(s2eLast.c_str()) < 0) && (errno != ENOENT)) {
+        if (!llvm::sys::fs::remove(s2eLast.str()).success()) {
             perror("ERROR: Cannot unlink s2e-last");
             exit(1);
         }
 
-        if (symlink(m_outputDirectoryBase.c_str(), s2eLast.c_str()) < 0) {
+        if (!llvm::sys::fs::create_symlink(m_outputDirectoryBase, s2eLast.str()).success()) {
             perror("ERROR: Cannot make symlink s2e-last");
             exit(1);
         }
@@ -532,7 +520,7 @@ void S2E::initPlugins()
     vector<string> pluginNames = getConfig()->getStringList("plugins");
 
     /* Check and load plugins */
-    foreach(const string& pluginName, pluginNames) {
+    for ( const string& pluginName : pluginNames ) {
         const PluginInfo* pluginInfo = m_pluginsFactory->getPluginInfo(pluginName);
         if(!pluginInfo) {
             std::cerr << "ERROR: plugin '" << pluginName
@@ -566,8 +554,8 @@ void S2E::initPlugins()
     }
 
     /* Check dependencies */
-    foreach(Plugin* p, m_activePluginsList) {
-        foreach(const string& name, p->getPluginInfo()->dependencies) {
+    for ( Plugin* p : m_activePluginsList ) {
+        for ( const string& name : p->getPluginInfo()->dependencies ) {
             if(!getPlugin(name)) {
                 std::cerr << "ERROR: plugin '" << p->getPluginInfo()->name
                           << "' depends on plugin '" << name
@@ -578,7 +566,7 @@ void S2E::initPlugins()
     }
 
     /* Initialize plugins */
-    foreach(Plugin* p, m_activePluginsList) {
+    for( Plugin* p : m_activePluginsList ) {
         p->initialize();
     }
 }
@@ -624,8 +612,8 @@ void S2E::printf(llvm::raw_ostream &os, const char *fmt, ...)
 
 void S2E::refreshPlugins()
 {
-    foreach2(it, m_activePluginsList.begin(), m_activePluginsList.end()) {
-        (*it)->refresh();
+    for( Plugin *plg : m_activePluginsList ) {
+        plg->refresh();
     }
 }
 
@@ -685,18 +673,19 @@ int S2E::fork()
 
         m_forking = true;
 
+        //TODO[J]: Check initialization routine and fix code here
         qemu_init_cpu_loop();
-        if (main_loop_init()) {
+        if (qemu_init_main_loop()) {
             fprintf(stderr, "qemu_init_main_loop failed\n");
             exit(1);
         }
 
-        if (init_timer_alarm(0)<0) {
-            getDebugStream() << "Could not initialize timers" << '\n';
-            exit(-1);
-        }
+//        if (init_timer_alarm(0)<0) {
+//            getDebugStream() << "Could not initialize timers" << '\n';
+//            exit(-1);
+//        }
 
-        qemu_init_vcpu(env);
+//        qemu_init_vcpu(env);
         cpu_synchronize_all_post_init();
         os_setup_signal_handling();
         vm_start();

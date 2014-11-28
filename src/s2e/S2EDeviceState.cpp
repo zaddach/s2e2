@@ -33,25 +33,28 @@
  * All contributors are listed in the S2E-AUTHORS file.
  */
 
+#include <tcgplugin/cxx11-compat.h>
+
+#include <llvm/Support/CommandLine.h>
+
 extern "C" {
 #include <qemu-common.h>
-#include <block.h>
+#include <block/block.h>
 #include <qapi-types.h>
 
 void vm_stop(int reason);
 void vm_start(void);
 }
 
-#include "s2e_block.h"
+#include <s2e/s2e_block.h>
 
 #include <iostream>
 #include <sstream>
 #include <s2e/Utils.h>
 #include <s2e/S2E.h>
 #include <s2e/s2e_qemu.h>
-#include "llvm/Support/CommandLine.h"
-#include "S2EDeviceState.h"
-#include "S2EExecutionState.h"
+#include "s2e/S2EDeviceState.h"
+#include "s2e/S2EExecutionState.h"
 
 namespace {
     //Force writes to disk to be persistent (and disable copy on write)

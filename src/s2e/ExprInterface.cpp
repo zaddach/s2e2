@@ -29,15 +29,17 @@
  * All contributors are listed in the S2E-AUTHORS file.
  */
 
+#include <tcgplugin/cxx11-compat.h>
+
 #include <klee/Expr.h>
 #include <llvm/ADT/SmallVector.h>
 #include <inttypes.h>
-#include "Utils.h"
-#include "ExprInterface.h"
-#include "S2E.h"
-#include "S2EExecutor.h"
-#include "S2EExecutionState.h"
-#include "s2e_qemu.h"
+#include "s2e/Utils.h"
+#include "s2e/ExprInterface.h"
+#include "s2e/S2E.h"
+#include "s2e/S2EExecutor.h"
+#include "s2e/S2EExecutionState.h"
+#include "s2e/s2e_qemu.h"
 
 /**
  * The expression interface allows the QEMU emulation code to manipulate
@@ -74,8 +76,8 @@ class ExprManager {
 public:
 
     ~ExprManager() {
-        foreach2(it, expressions.begin(), expressions.end()) {
-            delete *it;
+        for ( ExprBox *expr : expressions ) {
+            delete expr;
         }
     }
 
