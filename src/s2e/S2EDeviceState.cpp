@@ -43,6 +43,7 @@ extern "C" {
 #include <block/block.h>
 #include <qapi-types.h>
 #include <migration/qemu-file.h>
+#include <tcg-plugin.h>
 
 void vm_stop(int reason);
 void vm_start(void);
@@ -75,7 +76,7 @@ using namespace s2e;
 using namespace std;
 using namespace klee;
 
-std::vector<void *> S2EDeviceState::s_devices;
+std::vector<struct SaveStateEntry *> S2EDeviceState::s_devices;
 llvm::SmallVector<struct BlockDriverState*, 5> S2EDeviceState::s_blockDevices;
 
 uint8_t *S2EDeviceState::s_tempStateBuffer = NULL;
@@ -170,13 +171,12 @@ void S2EDeviceState::initDeviceState()
     g_s2e->getMessagesStream() << "Initing initial device state." << '\n';
 
     if (!s_devicesInited) {
-        void *se;
         g_s2e->getDebugStream() << "Looking for relevant virtual devices...";
 
         //Register all active devices detected by QEMU
-        for(se = s2e_qemu_get_first_se();
-            se != NULL; se = s2e_qemu_get_next_se(se)) {
-                std::string deviceId(s2e_qemu_get_se_idstr(se));
+        for(struct SaveStateEntry *se = tcgplugin_savevm_handlers_first();
+            se != nullptr; se = tcgplugin_savevm_handlers_next(se)) {
+                std::string deviceId(tcgplugin_savevm_handler_get_idstr(se));
                 if (!ignoreList.count(deviceId)) {
                     g_s2e->getDebugStream() << "   Registering device " << deviceId << '\n';
                     s_devices.push_back(se);
@@ -200,18 +200,16 @@ void S2EDeviceState::initDeviceState()
 
 void S2EDeviceState::saveDeviceState()
 {
-    qemu_make_readable(s_memFile);
+//    qemu_make_readable(s_memFile);
 
     //DPRINTF("Saving device state %p\n", this);
     /* Iterate through all device descritors and call
     * their snapshot function */
-    for (vector<void*>::iterator it = s_devices.begin(); it != s_devices.end(); it++) {
-        void *se = *it;
-        //DPRINTF("%s ", s2e_qemu_get_se_idstr(se));
-        s2e_qemu_save_state(s_memFile, se);
+	for ( struct SaveStateEntry *se : s_devices ) {
+        tcgplugin_vmstate_save(m_memFile, se);
     }
     //DPRINTF("\n");
-    qemu_fflush(s_memFile);
+    qemu_fflush(m_memFile);
     initFirstSnapshot();
 }
 
@@ -239,12 +237,12 @@ void S2EDeviceState::restoreDeviceState()
 {
     assert(s_finalStateSize && m_stateBuffer);
 
-    qemu_make_readable(s_memFile);
+  //  qemu_make_readable(m_memFile);
     //DPRINTF("Restoring device state %p\n", this);
-    for (vector<void*>::iterator it = s_devices.begin(); it != s_devices.end(); it++) {
-        void *se = *it;
+    for ( struct SaveStateEntry *se : s_devices )  {
         //DPRINTF("%s ", s2e_qemu_get_se_idstr(se));  
-        s2e_qemu_load_state(s_memFile, se);
+    	//TODO: find appropriate version id
+        tcgplugin_vmstate_load(m_memFile, se, 0);
     }
     //DPRINTF("\n");
 }
@@ -304,8 +302,8 @@ int S2EDeviceState::getBuffer(uint8_t *buf, int64_t pos, int size)
 unsigned S2EDeviceState::getBlockDeviceId(struct BlockDriverState* dev)
 {
     unsigned i = 0;
-    foreach2(it, s_blockDevices.begin(), s_blockDevices.end()) {
-        if ((*it) == dev) {
+    for ( auto blkdev : s_blockDevices )  {
+        if (blkdev == dev) {
             return i;
         }
         ++i;
