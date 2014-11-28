@@ -58,7 +58,7 @@ private:
     /* Give 64GB of KLEE address space for each block device */
     static const uint64_t BLOCK_DEV_AS = (1024 * 1024 * 1024) * 64;
 
-    static std::vector<void *> s_devices;
+    static std::vector<struct SaveStateEntry *> s_devices;
     static std::set<std::string> s_customDevices;
     static bool s_devicesInited;
 
