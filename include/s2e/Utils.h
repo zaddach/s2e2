@@ -92,23 +92,23 @@ inline std::ostream& operator<<(std::ostream& out, const hexval& h)
 /* The following is GCC-specific implementation of foreach.
    Should handle correctly all crazy C++ corner cases */
 
-template <typename T>
-class _S2EForeachContainer {
-public:
-    inline _S2EForeachContainer(const T& t) : c(t), brk(0), i(c.begin()), e(c.end()) { }
-    const T c; /* Compiler will remove the copying here */
-    int brk;
-    typename T::const_iterator i, e;
-};
-
-#define foreach(variable, container) \
-for (_S2EForeachContainer<__typeof__(container)> _container_(container); \
-     !_container_.brk && _container_.i != _container_.e; \
-     __extension__  ({ ++_container_.brk; ++_container_.i; })) \
-    for (variable = *_container_.i;; __extension__ ({--_container_.brk; break;}))
-
-#define foreach2(_i, _b, _e) \
-      for(typeof(_b) _i = _b, _i ## end = _e; _i != _i ## end;  ++ _i) 
+//template <typename T>
+//class _S2EForeachContainer {
+//public:
+//    inline _S2EForeachContainer(const T& t) : c(t), brk(0), i(c.begin()), e(c.end()) { }
+//    const T c; /* Compiler will remove the copying here */
+//    int brk;
+//    typename T::const_iterator i, e;
+//};
+//
+//#define foreach(variable, container) \
+//for (_S2EForeachContainer<__typeof__(container)> _container_(container); \
+//     !_container_.brk && _container_.i != _container_.e; \
+//     __extension__  ({ ++_container_.brk; ++_container_.i; })) \
+//    for (variable = *_container_.i;; __extension__ ({--_container_.brk; break;}))
+//
+//#define foreach2(_i, _b, _e) \
+//      for(typeof(_b) _i = _b, _i ## end = _e; _i != _i ## end;  ++ _i)
 
 
 /** A stream that writes both to parent streamf and cerr */
@@ -116,7 +116,7 @@ class raw_tee_ostream : public llvm::raw_ostream {
     std::deque<llvm::raw_ostream*> m_parentBufs;
 
     virtual void write_impl(const char *Ptr, size_t size) {
-        foreach(llvm::raw_ostream* buf, m_parentBufs) {
+        for ( llvm::raw_ostream *buf : m_parentBufs ) {
             buf->write(Ptr, size);
         }
     }

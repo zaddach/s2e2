@@ -45,7 +45,7 @@ SET ( LLVM_TRANSLATOR_SRC
 SET ( S2E_SRC
 	src/s2e/ConfigFile.cpp
 	src/s2e/ExprInterface.cpp
-	src/s2e/MMUFunctionHandlers.cpp
+#	src/s2e/MMUFunctionHandlers.cpp
 	src/s2e/Plugin.cpp
 	src/s2e/S2E.cpp
 	src/s2e/S2EDeviceState.cpp

@@ -33,6 +33,8 @@
  * All contributors are listed in the S2E-AUTHORS file.
  */
 
+#include <tcgplugin/cxx11-compat.h>
+
 #include <s2e/Plugin.h>
 #include <s2e/S2E.h>
 #include <s2e/S2EExecutionState.h>
@@ -65,8 +67,8 @@ PluginsFactory::PluginsFactory()
 {
     CompiledPlugin::CompiledPlugins *plugins = CompiledPlugin::getPlugins();
 
-    foreach2(it, plugins->begin(), plugins->end()) {
-        registerPlugin(*it);
+    for ( const PluginInfo *plgInfo : *plugins ) {
+        registerPlugin(plgInfo);
     }
 }
 

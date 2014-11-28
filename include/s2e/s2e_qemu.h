@@ -36,23 +36,13 @@
 #ifndef S2E_QEMU_H
 #define S2E_QEMU_H
 
+#include <s2e/S2EExecutionState.h>
+
 #include <inttypes.h>
 
-#ifdef __cplusplus
-namespace s2e {
-    struct S2E;
-    struct S2EExecutionState;
-    struct S2ETranslationBlock;
-}
 using s2e::S2E;
 using s2e::S2EExecutionState;
 using s2e::S2ETranslationBlock;
-#else
-struct S2E;
-struct S2EExecutionState;
-struct S2ETranslationBlock;
-
-#endif
 
 struct TranslationBlock;
 struct TCGLLVMContext;
@@ -204,7 +194,7 @@ void s2e_register_ram(struct S2E* s2e,
                       uint64_t host_address, int is_shared_concrete,
                       int save_on_context_switch, const char *name);
 
-uintptr_t s2e_get_host_address(target_phys_addr_t paddr);
+uintptr_t s2e_get_host_address(target_ulong paddr);
 
 int s2e_is_ram_registered(struct S2E* s2e,
                           struct S2EExecutionState *state,

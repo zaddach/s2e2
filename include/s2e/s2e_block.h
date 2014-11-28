@@ -66,8 +66,6 @@ extern int (*__hook_bdrv_write)(
 
 void s2e_bdrv_fail();
 
-extern struct S2EExecutionState **g_block_s2e_state;
-
 #ifdef __cplusplus
 }
 #endif
