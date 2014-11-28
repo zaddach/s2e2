@@ -39,8 +39,10 @@
 
 extern "C" {
 #include <qemu-common.h>
+#include <exec/cpu-common.h>
 #include <block/block.h>
 #include <qapi-types.h>
+#include <migration/qemu-file.h>
 
 void vm_stop(int reason);
 void vm_start(void);
@@ -76,7 +78,6 @@ using namespace klee;
 std::vector<void *> S2EDeviceState::s_devices;
 llvm::SmallVector<struct BlockDriverState*, 5> S2EDeviceState::s_blockDevices;
 
-QEMUFile *S2EDeviceState::s_memFile = NULL;
 uint8_t *S2EDeviceState::s_tempStateBuffer = NULL;
 unsigned S2EDeviceState::s_tempStateSize = 0;
 unsigned S2EDeviceState::s_finalStateSize = 0;
@@ -85,16 +86,6 @@ bool S2EDeviceState::s_devicesInited=false;
 
 extern "C" {
 
-static int s2e_qemu_get_buffer(uint8_t *buf, int64_t pos, int size)
-{
-    return g_s2e_state->getDeviceState()->getBuffer(buf, pos, size);
-}
-
-static int s2e_qemu_put_buffer(const uint8_t *buf, int64_t pos, int size)
-{
-    return g_s2e_state->getDeviceState()->putBuffer(buf, pos, size);
-}
-
 void s2e_init_device_state(S2EExecutionState *s)
 {
     s->getDeviceState()->initDeviceState();
@@ -102,20 +93,42 @@ void s2e_init_device_state(S2EExecutionState *s)
 
 }
 
-
-S2EDeviceState::S2EDeviceState(const S2EDeviceState &state):
-        m_deviceState(state.m_deviceState)
-{
-    assert( state.m_stateBuffer && s_finalStateSize > 0);
-    m_stateBuffer = (uint8_t*) malloc(s_finalStateSize);
-    memcpy(m_stateBuffer, state.m_stateBuffer, s_finalStateSize);
-    s_memFile = state.s_memFile;
+int S2EDeviceState::getBufferInternal(void *opaque, uint8_t *buf, int64_t pos, int size) {
+    assert(opaque);
+    return static_cast<S2EDeviceState *>(opaque)->getBuffer(buf, pos, size);
 }
 
-S2EDeviceState::S2EDeviceState(klee::ExecutionState *state):m_deviceState(state)
+int S2EDeviceState::putBufferInternal(void *opaque, uint8_t const *buf, int64_t pos, int size) {
+    assert(opaque);
+    return static_cast<S2EDeviceState *>(opaque)->putBuffer(buf, pos, size);
+}
+
+S2EDeviceState::S2EDeviceState(const S2EDeviceState &state)
+    : m_deviceState(state.m_deviceState),
+      m_stateBuffer(nullptr),
+      m_memFile(nullptr),
+      m_fileOps(nullptr)
 {
-    m_stateBuffer = NULL;
-    s_memFile = NULL;
+    assert( state.m_stateBuffer && s_finalStateSize > 0);
+
+    m_stateBuffer = new uint8_t[s_finalStateSize];
+    assert(m_stateBuffer);
+    m_fileOps = new QEMUFileOps;
+    assert(m_fileOps);
+
+    memcpy(m_stateBuffer, state.m_stateBuffer, s_finalStateSize);
+
+    m_fileOps->get_buffer = &S2EDeviceState::getBufferInternal;
+    m_fileOps->put_buffer = &S2EDeviceState::putBufferInternal;
+    m_memFile = qemu_fopen_ops(this, m_fileOps);
+}
+
+S2EDeviceState::S2EDeviceState(klee::ExecutionState *state)
+    : m_deviceState(state),
+      m_stateBuffer(nullptr),
+      m_memFile(nullptr),
+      m_fileOps(nullptr)
+{
 }
 
 S2EDeviceState::~S2EDeviceState()
@@ -123,16 +136,18 @@ S2EDeviceState::~S2EDeviceState()
     if (m_stateBuffer) {
         free(m_stateBuffer);
     }
+
+    if (m_memFile)  {
+        qemu_fclose(m_memFile);
+    }
 }
 
 void S2EDeviceState::initDeviceState()
 {
-    m_stateBuffer = NULL;
+    assert(!m_stateBuffer);
+    assert(!m_memFile);
     
     assert(!s_devicesInited);
-
-    s_memFile = qemu_memfile_open(s2e_qemu_get_buffer, s2e_qemu_put_buffer);
-
 
     std::set<std::string> ignoreList;
     std::stringstream ss(SharedDevices);
