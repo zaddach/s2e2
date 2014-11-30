@@ -33,7 +33,9 @@
  * All contributors are listed in the S2E-AUTHORS file.
  */
 
-#include "S2EStatsTracker.h"
+#include <tcgplugin/cxx11-compat.h>
+
+#include "s2e/S2EStatsTracker.h"
 
 #include <s2e/S2EExecutor.h>
 #include <s2e/S2EExecutionState.h>
