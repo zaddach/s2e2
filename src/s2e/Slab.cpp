@@ -39,7 +39,7 @@
 //#define DEBUG_ALLOC
 //#define TESTSUITE_ALLOC
 
-#include "Slab.h"
+#include "s2e/Slab.h"
 
 
 #ifdef _WIN32
@@ -495,7 +495,7 @@ void* operator new (size_t size)
     return p;
 }
 
-void operator delete (void *p)
+void operator delete (void *p) throw()
 {
     if (!s2e::s_slab) {
         free(p);
