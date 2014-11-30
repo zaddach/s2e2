@@ -33,14 +33,19 @@
  * All contributors are listed in the S2E-AUTHORS file.
  */
 
+#include <tcgplugin/cxx11-compat.h>
+
+
+#include <llvm/Support/CommandLine.h>
+
 extern "C" {
 #include "config.h"
 #include "qemu-common.h"
-#include "sysemu.h"
-#include "cpus.h"
-#include "helper.h"
+#include "sysemu/sysemu.h"
+#include "sysemu/cpus.h"
+//#include "helper.h"
 
-#include "tcg-llvm.h"
+#include "tcgplugin/tcg-llvm.h"
 #include "cpu.h"
 
 
@@ -54,7 +59,7 @@ extern CPUArchState *env;
 
 }
 
-#include "S2EExecutionState.h"
+#include "s2e/S2EExecutionState.h"
 #include <s2e/s2e_config.h>
 #include <s2e/S2EDeviceState.h>
 #include <s2e/S2EExecutor.h>
@@ -67,8 +72,6 @@ extern CPUArchState *env;
 #include <s2e/S2E.h>
 #include <s2e/Utils.h>
 #include <s2e/s2e_qemu.h>
-
-#include <llvm/Support/CommandLine.h>
 
 #include <iomanip>
 #include <sstream>
