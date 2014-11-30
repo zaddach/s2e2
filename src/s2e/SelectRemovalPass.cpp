@@ -33,11 +33,11 @@
  * All contributors are listed in the S2E-AUTHORS file.
  */
 
-#include <llvm/Function.h>
-#include <llvm/IRBuilder.h>
+#include <llvm/IR/Function.h>
+#include <llvm/IR/IRBuilder.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 
-#include "SelectRemovalPass.h"
+#include "s2e/SelectRemovalPass.h"
 #include <iostream>
 
 using namespace llvm;
@@ -47,9 +47,6 @@ RegisterPass<SelectRemovalPass>
   X("selectremoval", "Converts Select instructions to if/then/else",
   false /* Only looks at CFG */,
   false /* Analysis Pass */);
-
-#define foreach(_i, _b, _e) \
-	  for(typeof(_b) _i = _b, _i ## end = _e; _i != _i ## end;  ++ _i)
 
 
 
@@ -80,19 +77,19 @@ bool SelectRemovalPass::runOnFunction(Function &F)
  // std::cout << "SelectRemovalPass: " << F.getName() << std::endl;
   bool modified=false;
   
-  foreach(bbit, F.begin(), F.end()) {
+  for( BasicBlock& bb : F ) {
+   BasicBlock *bbPtr = &bb;
    again:
-   foreach(iit, bbit->begin(), bbit->end()) {
-      Instruction &i = *iit;
-      if (i.getOpcode() != Instruction::Select)
+   for( Instruction& inst : *bbPtr ) {
+      if (inst.getOpcode() != Instruction::Select)
         continue;
 
-      Value *condition = iit->getOperand(0);
-      Value *trueV = iit->getOperand(1);
-      Value *falseV = iit->getOperand(2);
+      Value *condition = inst.getOperand(0);
+      Value *trueV = inst.getOperand(1);
+      Value *falseV = inst.getOperand(2);
   
-      BasicBlock *entry = bbit;
-      BasicBlock *fallback = bbit->splitBasicBlock(iit, "");
+      BasicBlock *entry = bbPtr;
+      BasicBlock *fallback = bbPtr->splitBasicBlock(inst, "");
       PHINode *phi = GenIf(&F, trueV, falseV, entry, fallback, condition);
       //std::cout << phi->getParent();
       Instruction *instToReplace = fallback->begin();
@@ -100,7 +97,7 @@ bool SelectRemovalPass::runOnFunction(Function &F)
       ReplaceInstWithInst(instToReplace->getParent()->getInstList(),
       ii, phi);
 
-      bbit = fallback;
+      bbPtr = fallback;
       modified = true;
       goto again;
     }
