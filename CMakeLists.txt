@@ -28,6 +28,36 @@ INCLUDE ( cmake/LLVMTools.cmake )
 ADD_SUBDIRECTORY ( klee )
 INCLUDE_DIRECTORIES ( klee/include ${PROJECT_BINARY_DIR}/klee/include )
 
+SET ( QEMU_TARGET_LIST
+    microblaze-softmmu
+    ppc64-softmmu
+    sh4-softmmu
+    aarch64-softmmu
+    mips-softmmu
+    ppcemb-softmmu
+    unicore32-softmmu
+    i386-softmmu
+    mips64el-softmmu
+    moxie-softmmu
+    alpha-softmmu
+    lm32-softmmu
+    ppc-softmmu
+    mips64-softmmu
+    or32-softmmu
+    m68k-softmmu
+    s390x-softmmu
+    sparc64-softmmu
+    x86_64-softmmu
+    arm-softmmu
+    mipsel-softmmu
+    xtensaeb-softmmu
+    microblazeel-softmmu
+    sh4eb-softmmu
+    xtensa-softmmu
+    cris-softmmu
+    sparc-softmmu )
+
+
 INCLUDE ( cmake/Qemu.cmake )
 
 # Build instructions
