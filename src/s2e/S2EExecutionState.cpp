@@ -51,6 +51,11 @@ extern "C" {
 
 extern CPUArchState *env;
 
+//TODO[J] call appropriate S2E function
+#define WR_cpu(env, member, value)  \
+    env->member = value
+#define RR_cpu(env, member) env->member
+
 #if S2E_RAM_OBJECT_BITS > TARGET_PAGE_BITS
 #pragma message ( "S2E_RAM_OBJECT_BITS: " STRING(S2E_RAM_OBJECT_BITS) )
 #pragma message ( "TARGET_PAGE_BITS: " STRING(TARGET_PAGE_BITS) )
@@ -642,10 +647,11 @@ uint64_t S2EExecutionState::getPc() const
 uint64_t S2EExecutionState::getFlags()
 {
 #ifdef TARGET_I386
+    CPUX86State *x86Env = (CPUX86State *) env;
     /* restore flags in standard format */
-    WR_cpu(env, cc_src, cpu_cc_compute_all(env, CC_OP));
-    WR_cpu(env, cc_op, CC_OP_EFLAGS);
-    return cpu_get_eflags(env);
+    WR_cpu(x86Env, cc_src, cpu_cc_compute_all(env, CC_OP));
+    WR_cpu(x86Env, cc_op, CC_OP_EFLAGS);
+    return cpu_compute_eflags(env);
 #elif TARGET_ARM
     // TODO: avoid duplication with cpsr_read()
     uint8_t cpsr_symbolic = getSymbolicRegistersMask() & 0x0f;
@@ -879,22 +885,24 @@ uint64_t S2EExecutionState::getSymbolicRegistersMask() const
         offset += sizeof (*env->regs);
     }
 
-    if (!os->isConcrete(offsetof(CPUX86State, cc_op),
-                        sizeof(env->cc_op) << 3)) {
-        mask |= _M_CC_OP;
-    }
-    if (!os->isConcrete(offsetof(CPUX86State, cc_src),
-                        sizeof(env->cc_src) << 3)) {
-        mask |= _M_CC_SRC;
-    }
-    if (!os->isConcrete(offsetof(CPUX86State, cc_dst),
-                        sizeof(env->cc_dst) << 3)) {
-        mask |= _M_CC_DST;
-    }
-    if (!os->isConcrete(offsetof(CPUX86State, cc_tmp),
-                        sizeof(env->cc_tmp) << 3)) {
-        mask |= _M_CC_TMP;
-    }
+    //TODO[J]: s2e_icount stubbed
+//    if (!os->isConcrete(offsetof(CPUX86State, cc_op),
+//                        sizeof(env->cc_op) << 3)) {
+//        mask |= _M_CC_OP;
+//    }
+//    if (!os->isConcrete(offsetof(CPUX86State, cc_src),
+//                        sizeof(env->cc_src) << 3)) {
+//        mask |= _M_CC_SRC;
+//    }
+//    if (!os->isConcrete(offsetof(CPUX86State, cc_dst),
+//                        sizeof(env->cc_dst) << 3)) {
+//        mask |= _M_CC_DST;
+//    }
+//    if (!os->isConcrete(offsetof(CPUX86State, cc_tmp),
+//                        sizeof(env->cc_tmp) << 3)) {
+//        mask |= _M_CC_TMP;
+//    }
+    assert(false && "J stubbed");
 #elif defined(TARGET_ARM)
     if(!os->isConcrete( 29*4, 4*8)) // CF
         mask |= (1 << 1);
@@ -1402,10 +1410,11 @@ void S2EExecutionState::readRegisterConcrete(
                     case offsetof(CPUX86State, regs[R_ESI]): reg = "esi"; break;
                     case offsetof(CPUX86State, regs[R_EDI]): reg = "edi"; break;
 
-                    case offsetof(CPUX86State, cc_src): reg = "cc_src"; break;
-                    case offsetof(CPUX86State, cc_dst): reg = "cc_dst"; break;
-                    case offsetof(CPUX86State, cc_op): reg = "cc_op"; break;
-                    case offsetof(CPUX86State, cc_tmp): reg = "cc_tmp"; break;
+                    //TODO[J] stubbed
+//                    case offsetof(CPUX86State, cc_src): reg = "cc_src"; break;
+//                    case offsetof(CPUX86State, cc_dst): reg = "cc_dst"; break;
+//                    case offsetof(CPUX86State, cc_op): reg = "cc_op"; break;
+//                    case offsetof(CPUX86State, cc_tmp): reg = "cc_tmp"; break;
 #elif defined(TARGET_ARM)
                     case 116: reg = "CF"; break;
                     case 120: reg = "VF"; break;

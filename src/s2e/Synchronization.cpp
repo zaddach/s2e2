@@ -35,9 +35,9 @@
 
 #include <cassert>
 
-#include "S2E.h"
+#include "s2e/S2E.h"
 #include "config-host.h"
-#include "Synchronization.h"
+#include "s2e/Synchronization.h"
 
 #ifndef CONFIG_WIN32
 #include <sys/types.h>

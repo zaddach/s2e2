@@ -66,8 +66,8 @@ extern "C" {
 static const bool execute_llvm = false;
 
 extern CPUArchState *env;
-void QEMU_NORETURN raise_exception(int exception_index);
-void QEMU_NORETURN raise_exception_err(int exception_index, int error_code);
+//void QEMU_NORETURN raise_exception(int exception_index);
+//void QEMU_NORETURN raise_exception_err(int exception_index, int error_code);
 extern const uint8_t parity_table[256];
 extern const uint8_t rclw_table[32];
 extern const uint8_t rclb_table[32];
@@ -775,7 +775,9 @@ S2EExecutor::S2EExecutor(S2E* s2e, TCGLLVMContext *tcgLLVMContext,
 //    __DEFINE_EXT_FUNCTION(do_interrupt)
 #endif
 #ifdef TARGET_I386
-    __DEFINE_EXT_FUNCTION(cpu_x86_handle_mmu_fault)
+    //TODO[J] stubbed
+//    __DEFINE_EXT_FUNCTION(cpu_x86_handle_mmu_fault)
+    assert(false && "J stubbed");
     __DEFINE_EXT_FUNCTION(cpu_x86_update_cr0)
     __DEFINE_EXT_FUNCTION(cpu_x86_update_cr3)
     __DEFINE_EXT_FUNCTION(cpu_x86_update_cr4)
@@ -2441,7 +2443,9 @@ inline void S2EExecutor::setCCOpEflags(S2EExecutionState *state)
                 executeFunction(state, "helper_set_cc_op_eflags");
             } catch(s2e::CpuExitException&) {
                 updateStates(state);
-                s2e_longjmp(env->jmp_env, 1);
+                //TODO[J] stubbed
+//                s2e_longjmp(env->jmp_env, 1);
+                assert(false && "J stubbed");
             }
         }
     } else {
@@ -2513,7 +2517,9 @@ inline void S2EExecutor::doInterrupt(S2EExecutionState *state, int intno,
             executeFunction(state, "s2e_do_interrupt_all", args);
         } catch(s2e::CpuExitException&) {
             updateStates(state);
-            s2e_longjmp(env->jmp_env, 1);
+            //TODO[J] stubbed
+//            s2e_longjmp(env->jmp_env, 1);
+            assert(false && "J stubbed");
         }
     }
 }
