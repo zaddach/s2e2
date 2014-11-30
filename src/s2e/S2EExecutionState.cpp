@@ -85,7 +85,7 @@ extern llvm::cl::opt<bool> DebugLogStateMerge;
 }
 
 namespace {
-CPUTLBEntry s_cputlb_empty_entry = { -1, -1, -1, -1 };
+CPUTLBEntry s_cputlb_empty_entry = { (target_ulong) -1, (target_ulong) -1, (target_ulong) -1, (target_ulong) -1 };
 }
 
 extern llvm::cl::opt<bool> PrintModeSwitch;
@@ -116,7 +116,8 @@ S2EExecutionState::S2EExecutionState(klee::KFunction *kf) :
         m_needFinalizeTBExec(false), m_nextSymbVarId(0), m_runningExceptionEmulationCode(false)
 {
     //XXX: make this a struct, not a pointer...
-    m_timersState = new TimersState;
+    //TODO[J]: Allocation of TimersState stubbed
+//    m_timersState = new TimersState;
     m_dirtyMaskObject = NULL;
 }
 
@@ -141,7 +142,9 @@ S2EExecutionState::~S2EExecutionState()
     //XXX: This cannot be done, as device states may refer to each other
     //delete m_deviceState;
 
-    delete m_timersState;
+    //TODO[J]: Allocation of TimersState stubbed
+    //delete m_timersState;
+    assert(false && "J stubbed");
 }
 
 
@@ -224,6 +227,8 @@ void S2EExecutionState::addressSpaceChange(const klee::MemoryObject *mo,
         g_s2e->getDebugStream(this) << "tlb map size=" << m_tlbMap.size() << '\n';
 #endif
 
+        //TODO[J]: TLB stuff stubbed
+        /*
         TlbMap::iterator it = m_tlbMap.find(const_cast<ObjectState*>(oldState));
         bool found = false;
         if (it != m_tlbMap.end()) {
@@ -266,6 +271,8 @@ void S2EExecutionState::addressSpaceChange(const klee::MemoryObject *mo,
             }
         }
 #endif
+        */
+        assert(false && "J stubbed");
     }
 #endif
 
@@ -295,9 +302,10 @@ ExecutionState* S2EExecutionState::clone()
     CPUArchState* cpu = (CPUArchState*)(m_cpuSystemState->address
                           - CPU_CONC_LIMIT);
 
-
-    foreach2(it, m_tlbMap.begin(), m_tlbMap.end()) {
-        ObjectStateTlbReferences &vec = (*it).second;
+    //TODO[J]: TLB stuff stubbed
+    /*
+    for ( auto tlbEntry : m_tlbMap )  {
+        ObjectStateTlbReferences &vec = tlbEntry.second;
         unsigned size = vec.size();
         for (unsigned i = 0; i < size; ++i) {
             const TlbCoordinates &coords = vec[i];
@@ -308,6 +316,8 @@ ExecutionState* S2EExecutionState::clone()
             }
         }
     }
+    */
+    assert(false && "J stubbed");
 #endif
 
     S2EExecutionState *ret = new S2EExecutionState(*this);
@@ -319,8 +329,10 @@ ExecutionState* S2EExecutionState::clone()
 
     ret->m_stateID = g_s2e->fetchAndIncrementStateId();
 
-    ret->m_timersState = new TimersState;
-    *ret->m_timersState = *m_timersState;
+    //TODO[J]: stubbed TimersState
+//    ret->m_timersState = new TimersState;
+//    *ret->m_timersState = *m_timersState;
+    assert(false && "J stubbed");
 
     // Clone the plugins
     PluginStateMap::iterator it;
@@ -824,14 +836,18 @@ uint64_t S2EExecutionState::getTotalInstructionCount()
     if (!m_cpuSystemState) {
         return 0;
     }
-    return readCpuState(CPU_OFFSET(s2e_icount), 8*sizeof(uint64_t));
+    //TODO[J]: s2e_icount stubbed
+//    return readCpuState(CPU_OFFSET(s2e_icount), 8*sizeof(uint64_t));
+    assert(0 && "J stubbed");
 }
 
 
 TranslationBlock *S2EExecutionState::getTb() const
 {
-    return (TranslationBlock*)
-            readCpuState(CPU_OFFSET(s2e_current_tb), 8*sizeof(void*));
+    //TODO[J]: stubbed
+//    return (TranslationBlock*)
+//            readCpuState(CPU_OFFSET(s2e_current_tb), 8*sizeof(void*));
+    assert(false && "J stubbed");
 }
 
 uint64_t S2EExecutionState::getPid() const
@@ -959,9 +975,9 @@ uint64_t S2EExecutionState::getPhysicalAddress(uint64_t virtualAddress) const
 {
     assert(m_active && "Can not use getPhysicalAddress when the state"
                        " is not active (TODO: fix it)");
-    target_phys_addr_t physicalAddress =
-        cpu_get_phys_page_debug(env, virtualAddress & TARGET_PAGE_MASK);
-    if(physicalAddress == (target_phys_addr_t) -1)
+    hwaddr physicalAddress =
+        cpu_get_phys_page_debug(ENV_GET_CPU(env), virtualAddress & TARGET_PAGE_MASK);
+    if(physicalAddress == (hwaddr) -1)
         return (uint64_t) -1;
 
     return physicalAddress | (virtualAddress & ~TARGET_PAGE_MASK);
@@ -1272,7 +1288,9 @@ void S2EExecutionState::readRamConcreteCheck(uint64_t hostAddress, uint8_t* buf,
                 }
                 m_startSymbexAtPC = getPc();
                 // XXX: what about regs_to_env ?
-                s2e_longjmp(env->jmp_env, 1);
+                //TODO[J]: stubbed
+ //               s2e_longjmp(ENV_GET_CPU(env)->jmp_env, 1);
+                assert(false && "J stubbed");
             }
         }
     } else {
@@ -1594,10 +1612,12 @@ void S2EExecutionState::undoCallAndJumpToSymbolic()
 #ifdef TARGET_X86_64
         if (env->hflags & HF_CS64_MASK) size = CPU_REG_SIZE;
 #endif /* TARGET_X86_64 */
-        assert(getTb()->pcOfLastInstr);
-        setSp(getSp() + size);
-        setPc(getTb()->pcOfLastInstr);
-        jumpToSymbolicCpp();
+        //TODO[J]: stubbed
+//        assert(getTb()->pcOfLastInstr);
+//        setSp(getSp() + size);
+//        setPc(getTb()->pcOfLastInstr);
+//        jumpToSymbolicCpp();
+        assert(false && "J stubbed");
     }
 }
 
@@ -1618,7 +1638,9 @@ void S2EExecutionState::jumpToSymbolic()
 
     m_startSymbexAtPC = getPc();
     // XXX: what about regs_to_env ?
-    s2e_longjmp(env->jmp_env, 1);
+    //TODO[J]: stubbed
+//    s2e_longjmp(env->jmp_env, 1);
+    assert(false && "J stubbed");
 }
 
 bool S2EExecutionState::needToJumpToSymbolic() const
@@ -1742,12 +1764,15 @@ bool S2EExecutionState::merge(const ExecutionState &_b)
     {
         uint8_t* cpuStateA = m_cpuSystemObject->getConcreteStore() - CPU_CONC_LIMIT;
         uint8_t* cpuStateB = b.m_cpuSystemObject->getConcreteStore() - CPU_CONC_LIMIT;
-        if(memcmp(cpuStateA + CPU_CONC_LIMIT, cpuStateB + CPU_CONC_LIMIT,
-                  CPU_OFFSET(current_tb) - CPU_CONC_LIMIT)) {
-            if(DebugLogStateMerge)
-                s << "merge failed: different concrete cpu state" << "\n";
-            return false;
-        }
+
+        //TODO[J]: stubbed
+//        if(memcmp(cpuStateA + CPU_CONC_LIMIT, cpuStateB + CPU_CONC_LIMIT,
+//                  CPU_OFFSET(current_tb) - CPU_CONC_LIMIT)) {
+//            if(DebugLogStateMerge)
+//                s << "merge failed: different concrete cpu state" << "\n";
+//            return false;
+//        }
+        assert(false && "J stubbed");
     }
 
     // We cannot merge if addresses would resolve differently in the
@@ -1893,16 +1918,19 @@ bool S2EExecutionState::merge(const ExecutionState &_b)
     {
         CPUArchState * cpu;
         cpu = (CPUArchState *) (m_cpuSystemObject->getConcreteStore() - CPU_CONC_LIMIT);
-        cpu->current_tb = NULL;
 
-        for (int mmu_idx = 0; mmu_idx < NB_MMU_MODES; mmu_idx++) {
-            for(int i = 0; i < CPU_TLB_SIZE; i++)
-                cpu->tlb_table[mmu_idx][i] = s_cputlb_empty_entry;
-            for(int i = 0; i < CPU_S2E_TLB_SIZE; i++)
-                cpu->s2e_tlb_table[mmu_idx][i].objectState = 0;
-        }
-
-        memset (cpu->tb_jmp_cache, 0, TB_JMP_CACHE_SIZE * sizeof (void *));
+        //TODO[J]: stubbed
+//        cpu->current_tb = NULL;
+//
+//        for (int mmu_idx = 0; mmu_idx < NB_MMU_MODES; mmu_idx++) {
+//            for(int i = 0; i < CPU_TLB_SIZE; i++)
+//                cpu->tlb_table[mmu_idx][i] = s_cputlb_empty_entry;
+//            for(int i = 0; i < CPU_S2E_TLB_SIZE; i++)
+//                cpu->s2e_tlb_table[mmu_idx][i].objectState = 0;
+//        }
+//
+//        memset (cpu->tb_jmp_cache, 0, TB_JMP_CACHE_SIZE * sizeof (void *));
+        assert(false && "J stubbed");
     }
 
     return true;
@@ -1943,11 +1971,13 @@ void S2EExecutionState::dmaRead(uint64_t hostAddress, uint8_t *buf, unsigned siz
         } else {
             concreteStore = os->getConcreteStore(true);
             for (unsigned i=0; i<length; ++i) {
-                if (_s2e_check_concrete(os, offset+i, 1)) {
-                    buf[i] = concreteStore[offset+i];
-                }else {
-                    readRamConcrete(hostAddress+i, &buf[i], sizeof(buf[i]));
-                }
+                //TODO[J]: stubbed
+//                if (_s2e_check_concrete(os, offset+i, 1)) {
+//                    buf[i] = concreteStore[offset+i];
+//                }else {
+//                    readRamConcrete(hostAddress+i, &buf[i], sizeof(buf[i]));
+//                }
+                assert(false && "J stubbed");
             }
         }
 
@@ -1986,11 +2016,13 @@ void S2EExecutionState::dmaWrite(uint64_t hostAddress, uint8_t *buf, unsigned si
             concreteStore = os->getConcreteStore(true);
 
             for (unsigned i=0; i<length; ++i) {
-                if (_s2e_check_concrete(os, offset+i, 1)) {
-                    concreteStore[offset+i] = buf[i];
-                }else {
-                    writeRamConcrete(hostAddress+i, &buf[i], sizeof(buf[i]));
-                }
+                //TODO[J]: stubbed
+//                if (_s2e_check_concrete(os, offset+i, 1)) {
+//                    concreteStore[offset+i] = buf[i];
+//                }else {
+//                    writeRamConcrete(hostAddress+i, &buf[i], sizeof(buf[i]));
+//                }
+                assert(false && "J stubbed");
             }
         }
         buf+=length;
@@ -2019,7 +2051,7 @@ void S2EExecutionState::flushTlbCachePage(klee::ObjectState *objectState, int mm
     assert(tlbIt != m_tlbMap.end());
 
     ObjectStateTlbReferences &vec = (*tlbIt).second;
-    foreach2(vit, vec.begin(), vec.end()) {
+    for ( auto vit = vec.begin(), vitE = vec.end(); vit != vitE; ++vit ) {
         if ((*vit).first == (unsigned)mmu_idx && (*vit).second == (unsigned)index) {
             vec.erase(vit);
             found = true;
@@ -2041,62 +2073,64 @@ void S2EExecutionState::flushTlbCachePage(klee::ObjectState *objectState, int mm
 void S2EExecutionState::updateTlbEntry(CPUArchState* env,
                           int mmu_idx, uint64_t virtAddr, uint64_t hostAddr)
 {
-#ifdef S2E_ENABLE_S2E_TLB
-    assert( (hostAddr & ~TARGET_PAGE_MASK) == 0 );
-    assert( (virtAddr & ~TARGET_PAGE_MASK) == 0 );
-
-    ObjectPair *ops = m_memcache.getArray(hostAddr);
-
-    unsigned int index = (virtAddr >> S2E_RAM_OBJECT_BITS) & (CPU_S2E_TLB_SIZE - 1);
-    for(int i = 0; i < CPU_S2E_TLB_SIZE / CPU_TLB_SIZE; ++i) {
-        S2ETLBEntry* entry = &env->s2e_tlb_table[mmu_idx][index];
-        ObjectState *oldObjectState = static_cast<ObjectState *>(entry->objectState);
-
-        ObjectPair op;
-
-        if (!ops || !(op = ops[i]).first) {
-            op = m_memcache.get(hostAddr);
-            if (!op.first) {
-                op = addressSpace.findObject(hostAddr);
-            }
-        }
-        assert(op.first && op.second && op.second->getObject() == op.first && op.first->address == hostAddr);
-
-        klee::ObjectState *ros = const_cast<ObjectState*>(op.second);
-
-        if(op.first->isSharedConcrete) {
-            entry->objectState = const_cast<klee::ObjectState*>(op.second);
-            entry->addend = (hostAddr - virtAddr) | 1;
-        } else {
-            // XXX: for now we always ensure that all pages in TLB are writable
-            klee::ObjectState *wos = addressSpace.getWriteable(op.first, op.second);
-            entry->objectState = wos;
-            entry->addend = ((uintptr_t) wos->getConcreteStore(true) - virtAddr) | 1;
-        }
-
-        op = ObjectPair(op.first, (const ObjectState*)entry->objectState);
-
-        if (!ops) {
-            m_memcache.put(hostAddr, op);
-            ops = m_memcache.getArray(hostAddr & TARGET_PAGE_MASK);
-        }
-        ops[i] = op;
-
-
-        /* Store the new mapping in the cache */
-#ifdef S2E_DEBUG_TLBCACHE
-        g_s2e->getDebugStream() << std::dec << "Storing " << op.second << " (" << mmu_idx << ',' << index << ")\n";
-#endif
-        if (oldObjectState != ros) {
-            flushTlbCachePage(oldObjectState, mmu_idx, index);
-            m_tlbMap[const_cast<ObjectState *>(op.second)].push_back(TlbCoordinates(mmu_idx, index));
-        }
-
-        index += 1;
-        hostAddr += S2E_RAM_OBJECT_SIZE;
-        virtAddr += S2E_RAM_OBJECT_SIZE;
-    }
-#endif
+    //TODO[J]: stubbed
+//#ifdef S2E_ENABLE_S2E_TLB
+//    assert( (hostAddr & ~TARGET_PAGE_MASK) == 0 );
+//    assert( (virtAddr & ~TARGET_PAGE_MASK) == 0 );
+//
+//    ObjectPair *ops = m_memcache.getArray(hostAddr);
+//
+//    unsigned int index = (virtAddr >> S2E_RAM_OBJECT_BITS) & (CPU_S2E_TLB_SIZE - 1);
+//    for(int i = 0; i < CPU_S2E_TLB_SIZE / CPU_TLB_SIZE; ++i) {
+//        S2ETLBEntry* entry = &env->s2e_tlb_table[mmu_idx][index];
+//        ObjectState *oldObjectState = static_cast<ObjectState *>(entry->objectState);
+//
+//        ObjectPair op;
+//
+//        if (!ops || !(op = ops[i]).first) {
+//            op = m_memcache.get(hostAddr);
+//            if (!op.first) {
+//                op = addressSpace.findObject(hostAddr);
+//            }
+//        }
+//        assert(op.first && op.second && op.second->getObject() == op.first && op.first->address == hostAddr);
+//
+//        klee::ObjectState *ros = const_cast<ObjectState*>(op.second);
+//
+//        if(op.first->isSharedConcrete) {
+//            entry->objectState = const_cast<klee::ObjectState*>(op.second);
+//            entry->addend = (hostAddr - virtAddr) | 1;
+//        } else {
+//            // XXX: for now we always ensure that all pages in TLB are writable
+//            klee::ObjectState *wos = addressSpace.getWriteable(op.first, op.second);
+//            entry->objectState = wos;
+//            entry->addend = ((uintptr_t) wos->getConcreteStore(true) - virtAddr) | 1;
+//        }
+//
+//        op = ObjectPair(op.first, (const ObjectState*)entry->objectState);
+//
+//        if (!ops) {
+//            m_memcache.put(hostAddr, op);
+//            ops = m_memcache.getArray(hostAddr & TARGET_PAGE_MASK);
+//        }
+//        ops[i] = op;
+//
+//
+//        /* Store the new mapping in the cache */
+//#ifdef S2E_DEBUG_TLBCACHE
+//        g_s2e->getDebugStream() << std::dec << "Storing " << op.second << " (" << mmu_idx << ',' << index << ")\n";
+//#endif
+//        if (oldObjectState != ros) {
+//            flushTlbCachePage(oldObjectState, mmu_idx, index);
+//            m_tlbMap[const_cast<ObjectState *>(op.second)].push_back(TlbCoordinates(mmu_idx, index));
+//        }
+//
+//        index += 1;
+//        hostAddr += S2E_RAM_OBJECT_SIZE;
+//        virtAddr += S2E_RAM_OBJECT_SIZE;
+//    }
+//#endif
+    assert(false && "J stubbed");
 }
 
 
