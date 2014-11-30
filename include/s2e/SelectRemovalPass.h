@@ -38,7 +38,7 @@
 #define _SELECT_REMOVE_PASS_H_
 
 #include "llvm/Pass.h"
-#include "llvm/Function.h"
+#include "llvm/IR/Function.h"
 
 
   struct SelectRemovalPass : public llvm::FunctionPass {

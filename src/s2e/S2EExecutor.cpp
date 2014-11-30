@@ -37,15 +37,33 @@
  *
  */
 
+#include <tcgplugin/cxx11-compat.h>
+
+#include <llvm/IR/Module.h>
+#include <llvm/IR/Function.h>
+#include <llvm/IR/DerivedTypes.h>
+#include <llvm/IR/Instructions.h>
+#include <llvm/IR/Constants.h>
+#include <llvm/PassManager.h>
+#include <llvm/IR/DataLayout.h>
+#include <llvm/ExecutionEngine/ExecutionEngine.h>
+#include <llvm/ExecutionEngine/GenericValue.h>
+#include <llvm/Support/DynamicLibrary.h>
+#include <llvm/Support/Process.h>
+#include <llvm/Support/CommandLine.h>
+#include <llvm/Support/TimeValue.h>
+
 extern "C" {
 #include <qemu-common.h>
-#include <cpu-all.h>
+#include <exec/cpu-all.h>
 #include <tcg.h>
-#include <tcg-llvm.h>
-#include <exec-all.h>
-#include <ioport.h>
-#include <sysemu.h>
-#include <cpus.h>
+#include <tcgplugin/tcg-llvm.h>
+#include <exec/exec-all.h>
+#include <exec/ioport.h>
+#include <sysemu/sysemu.h>
+#include <sysemu/cpus.h>
+
+static const bool execute_llvm = false;
 
 extern CPUArchState *env;
 void QEMU_NORETURN raise_exception(int exception_index);
@@ -75,7 +93,7 @@ uint64_t helper_set_cc_op_eflags(void);
 #include <malloc.h>
 #endif
 
-#include "S2EExecutor.h"
+#include "s2e/S2EExecutor.h"
 #include <s2e/s2e_config.h>
 #include <s2e/S2E.h>
 #include <s2e/S2EExecutionState.h>
@@ -88,22 +106,9 @@ uint64_t helper_set_cc_op_eflags(void);
 #include <s2e/S2EStatsTracker.h>
 
 //XXX: Remove this from executor
-#include <s2e/Plugins/ModuleExecutionDetector.h>
+//#include <s2e/Plugins/ModuleExecutionDetector.h>
 
 #include <s2e/s2e_qemu.h>
-
-#include <llvm/Module.h>
-#include <llvm/Function.h>
-#include <llvm/DerivedTypes.h>
-#include <llvm/Instructions.h>
-#include <llvm/Constants.h>
-#include <llvm/PassManager.h>
-#include <llvm/DataLayout.h>
-#include <llvm/ExecutionEngine/ExecutionEngine.h>
-#include <llvm/ExecutionEngine/GenericValue.h>
-#include <llvm/Support/DynamicLibrary.h>
-#include <llvm/Support/Process.h>
-#include <llvm/Support/CommandLine.h>
 
 #include <klee/PTree.h>
 #include <klee/Memory.h>
@@ -113,8 +118,6 @@ uint64_t helper_set_cc_op_eflags(void);
 #include <klee/CoreStats.h>
 #include <klee/TimerStatIncrementer.h>
 #include <klee/Solver.h>
-
-#include <llvm/Support/TimeValue.h>
 
 #include <vector>
 
@@ -133,7 +136,6 @@ uint64_t helper_set_cc_op_eflags(void);
 //#define S2E_TRACE_EFLAGS
 //#define FORCE_CONCRETIZATION
 
-using namespace std;
 using namespace llvm;
 using namespace klee;
 
@@ -290,8 +292,9 @@ public:
 extern "C" {
 
 // FIXME: This is not reentrant.
-static s2e_jmp_buf s2e_escapeCallJmpBuf;
-static s2e_jmp_buf s2e_cpuExitJmpBuf;
+//TODO[J]: stubbed
+//static s2e_jmp_buf s2e_escapeCallJmpBuf;
+//static s2e_jmp_buf s2e_cpuExitJmpBuf;
 
 #ifdef _WIN32
 static void s2e_ext_sigsegv_handler(int signal)
@@ -299,7 +302,8 @@ static void s2e_ext_sigsegv_handler(int signal)
 }
 #else
 static void s2e_ext_sigsegv_handler(int signal, siginfo_t *info, void *context) {
-  s2e_longjmp(s2e_escapeCallJmpBuf, 1);
+    assert(false &&  "J stubbed");
+//  s2e_longjmp(s2e_escapeCallJmpBuf, 1);
 }
 #endif
 
@@ -327,23 +331,25 @@ bool S2EExternalDispatcher::runProtectedCall(Function *f, uint64_t *args) {
   sigaction(SIGSEGV, &segvAction, &segvActionOld);
   #endif
 
-  memcpy(s2e_cpuExitJmpBuf, env->jmp_env, sizeof(env->jmp_env));
-
-  if(s2e_setjmp(env->jmp_env)) {
-      memcpy(env->jmp_env, s2e_cpuExitJmpBuf, sizeof(env->jmp_env));
-      throw CpuExitException();
-  } else {
-      if (s2e_setjmp(s2e_escapeCallJmpBuf)) {
-        res = false;
-      } else {
-        std::vector<GenericValue> gvArgs;
-
-        executionEngine->runFunction(f, gvArgs);
-        res = true;
-      }
-  }
-
-  memcpy(env->jmp_env, s2e_cpuExitJmpBuf, sizeof(env->jmp_env));
+  //TODO[J] stubbed
+//  memcpy(s2e_cpuExitJmpBuf, env->jmp_env, sizeof(env->jmp_env));
+//
+//  if(s2e_setjmp(env->jmp_env)) {
+//      memcpy(env->jmp_env, s2e_cpuExitJmpBuf, sizeof(env->jmp_env));
+//      throw CpuExitException();
+//  } else {
+//      if (s2e_setjmp(s2e_escapeCallJmpBuf)) {
+//        res = false;
+//      } else {
+//        std::std::vector<GenericValue> gvArgs;
+//
+//        executionEngine->runFunction(f, gvArgs);
+//        res = true;
+//      }
+//  }
+//
+//  memcpy(env->jmp_env, s2e_cpuExitJmpBuf, sizeof(env->jmp_env));
+  assert(false && "J stubbed");
 
   #ifdef _WIN32
 #warning Implement more robust signal handling on windows
@@ -751,14 +757,18 @@ S2EExecutor::S2EExecutor(S2E* s2e, TCGLLVMContext *tcgLLVMContext,
     __DEFINE_EXT_FUNCTION(fputc)
     __DEFINE_EXT_FUNCTION(fwrite)
 
-    __DEFINE_EXT_VARIABLE(io_mem_ram)
-    __DEFINE_EXT_VARIABLE(io_mem_rom)
-    __DEFINE_EXT_VARIABLE(io_mem_unassigned)
-    __DEFINE_EXT_VARIABLE(io_mem_notdirty)
+    //TODO[J] stubbed
+//    __DEFINE_EXT_VARIABLE(io_mem_ram)
+//    __DEFINE_EXT_VARIABLE(io_mem_rom)
+//    __DEFINE_EXT_VARIABLE(io_mem_unassigned)
+//    __DEFINE_EXT_VARIABLE(io_mem_notdirty)
+    assert(false && "J stubbed");
 
     __DEFINE_EXT_FUNCTION(cpu_io_recompile)
 #ifdef TARGET_ARM
-    __DEFINE_EXT_FUNCTION(cpu_arm_handle_mmu_fault)
+    //TODO[J] stubbed
+//    __DEFINE_EXT_FUNCTION(cpu_arm_handle_mmu_fault)
+    assert(false && "J stubbed");
     __DEFINE_EXT_FUNCTION(cpsr_read)
     __DEFINE_EXT_FUNCTION(cpsr_write)
     __DEFINE_EXT_FUNCTION(arm_cpu_list)
@@ -792,24 +802,28 @@ S2EExecutor::S2EExecutor(S2E* s2e, TCGLLVMContext *tcgLLVMContext,
     __DEFINE_EXT_FUNCTION(cpu_abort)
     __DEFINE_EXT_FUNCTION(cpu_loop_exit)
 
-    __DEFINE_EXT_FUNCTION(tb_find_pc)
-
-    __DEFINE_EXT_FUNCTION(qemu_system_reset_request)
+    //TODO[J] stubbed
+//    __DEFINE_EXT_FUNCTION(tb_find_pc)
+//
+//    __DEFINE_EXT_FUNCTION(qemu_system_reset_request)
+    assert(false && "J stubbed");
 
     __DEFINE_EXT_FUNCTION(tlb_flush_page)
     __DEFINE_EXT_FUNCTION(tlb_flush)
 
-    __DEFINE_EXT_FUNCTION(io_readb_mmu)
-    __DEFINE_EXT_FUNCTION(io_readw_mmu)
-    __DEFINE_EXT_FUNCTION(io_readl_mmu)
-    __DEFINE_EXT_FUNCTION(io_readq_mmu)
-
-    __DEFINE_EXT_FUNCTION(io_writeb_mmu)
-    __DEFINE_EXT_FUNCTION(io_writew_mmu)
-    __DEFINE_EXT_FUNCTION(io_writel_mmu)
-    __DEFINE_EXT_FUNCTION(io_writeq_mmu)
-
-    __DEFINE_EXT_FUNCTION(iotlb_to_region)
+    //TODO[J] stubbed
+//    __DEFINE_EXT_FUNCTION(io_readb_mmu)
+//    __DEFINE_EXT_FUNCTION(io_readw_mmu)
+//    __DEFINE_EXT_FUNCTION(io_readl_mmu)
+//    __DEFINE_EXT_FUNCTION(io_readq_mmu)
+//
+//    __DEFINE_EXT_FUNCTION(io_writeb_mmu)
+//    __DEFINE_EXT_FUNCTION(io_writew_mmu)
+//    __DEFINE_EXT_FUNCTION(io_writel_mmu)
+//    __DEFINE_EXT_FUNCTION(io_writeq_mmu)
+//
+//    __DEFINE_EXT_FUNCTION(iotlb_to_region)
+    assert(false && "J stubbed");
 
 
     __DEFINE_EXT_FUNCTION(s2e_ensure_symbolic)
@@ -826,23 +840,25 @@ S2EExecutor::S2EExecutor(S2E* s2e, TCGLLVMContext *tcgLLVMContext,
     __DEFINE_EXT_FUNCTION(s2e_on_page_fault);
 
 
-    __DEFINE_EXT_FUNCTION(s2e_ismemfunc)
-    __DEFINE_EXT_FUNCTION(s2e_notdirty_mem_write)
-
-    __DEFINE_EXT_FUNCTION(cpu_io_recompile)
-    __DEFINE_EXT_FUNCTION(can_do_io)
-
-    __DEFINE_EXT_FUNCTION(ldub_phys)
-    __DEFINE_EXT_FUNCTION(stb_phys)
-
-    __DEFINE_EXT_FUNCTION(lduw_phys)
-    __DEFINE_EXT_FUNCTION(stw_phys)
-
-    __DEFINE_EXT_FUNCTION(ldl_phys)
-    __DEFINE_EXT_FUNCTION(stl_phys)
-
-    __DEFINE_EXT_FUNCTION(ldq_phys)
-    __DEFINE_EXT_FUNCTION(stq_phys)
+    //TODO[J] stubbed
+//    __DEFINE_EXT_FUNCTION(s2e_ismemfunc)
+//    __DEFINE_EXT_FUNCTION(s2e_notdirty_mem_write)
+//
+//    __DEFINE_EXT_FUNCTION(cpu_io_recompile)
+//    __DEFINE_EXT_FUNCTION(can_do_io)
+//
+//    __DEFINE_EXT_FUNCTION(ldub_phys)
+//    __DEFINE_EXT_FUNCTION(stb_phys)
+//
+//    __DEFINE_EXT_FUNCTION(lduw_phys)
+//    __DEFINE_EXT_FUNCTION(stw_phys)
+//
+//    __DEFINE_EXT_FUNCTION(ldl_phys)
+//    __DEFINE_EXT_FUNCTION(stl_phys)
+//
+//    __DEFINE_EXT_FUNCTION(ldq_phys)
+//    __DEFINE_EXT_FUNCTION(stq_phys)
+    assert(false && "J stubbed");
 
 #if 0
     //Implementing these functions prevents special function handler
@@ -860,7 +876,7 @@ S2EExecutor::S2EExecutor(S2E* s2e, TCGLLVMContext *tcgLLVMContext,
         m_tcgLLVMContext->getFunctionPassManager()->doInitialization();
     }
 
-    ModuleOptions MOpts = ModuleOptions(vector<string>(),
+    ModuleOptions MOpts = ModuleOptions(std::vector<std::string>(),
                                         /* Optimize= */ true, /* CheckDivZero= */ false);
     /* Set module for the executor */
 
@@ -872,9 +888,12 @@ S2EExecutor::S2EExecutor(S2E* s2e, TCGLLVMContext *tcgLLVMContext,
      * Symolic execution IS NOT SUPPORTED when running in LLVM mode!
      */
     if (!execute_llvm) {
-        char* filename =  qemu_find_file(QEMU_FILE_TYPE_LIB, "op_helper.bc");
+        //TODO[J] Filename needs to be set according to the cmake project installation prefix
+//        char* filename =  qemu_find_file(QEMU_FILE_TYPE_LIB, "op_helper.bc");
+        char* filename = nullptr;
+        assert(false && "J stubbed");
         assert(filename);
-        MOpts = ModuleOptions(vector<string>(1, filename),
+        MOpts = ModuleOptions(std::vector<std::string>(1, filename),
                 /* Optimize= */ true, /* CheckDivZero= */ false,
                 m_tcgLLVMContext->getFunctionPassManager());
 
@@ -901,7 +920,7 @@ S2EExecutor::S2EExecutor(S2E* s2e, TCGLLVMContext *tcgLLVMContext,
             PointerType::get(IntegerType::get(ctx, 64), 0);
     FunctionType* tbFunctionTy = FunctionType::get(
             IntegerType::get(ctx, TCG_TARGET_REG_BITS),
-            ArrayRef<llvm::Type*>(vector<llvm::Type*>(1, PointerType::get(
+            ArrayRef<llvm::Type*>(std::vector<llvm::Type*>(1, PointerType::get(
                     IntegerType::get(ctx, 64), 0))),
             false);
 
@@ -918,7 +937,7 @@ S2EExecutor::S2EExecutor(S2E* s2e, TCGLLVMContext *tcgLLVMContext,
 
     BasicBlock* dummyMainBB = BasicBlock::Create(ctx, "entry", dummyMain);
 
-    vector<Value*> tbFunctionArgs(1, ConstantPointerNull::get(tbFunctionArgTy));
+    std::vector<Value*> tbFunctionArgs(1, ConstantPointerNull::get(tbFunctionArgTy));
     CallInst::Create(tbFunction, ArrayRef<Value*>(tbFunctionArgs),
             "tbFunctionCall", dummyMainBB);
     ReturnInst::Create(m_tcgLLVMContext->getLLVMContext(), dummyMainBB);
@@ -974,7 +993,9 @@ S2EExecutor::S2EExecutor(S2E* s2e, TCGLLVMContext *tcgLLVMContext,
             replaceExternalFunctionsWithSpecialHandlers();
         }
 
-        m_tcgLLVMContext->initializeHelpers();
+        //TODO[J] stubbed
+//        m_tcgLLVMContext->initializeHelpers();
+        assert(false && "J stubbed");
     }
 
     initializeStatistics();
@@ -1076,13 +1097,15 @@ S2EExecutionState* S2EExecutor::createInitialState()
     __DEFINE_EXT_OBJECT_RO(g_s2e)
     __DEFINE_EXT_OBJECT_RO(g_s2e_state)
     //__DEFINE_EXT_OBJECT_RO(g_s2e_exec_ret_addr)
-    __DEFINE_EXT_OBJECT_RO(io_mem_read)
-    __DEFINE_EXT_OBJECT_RO(io_mem_write)
-    //__DEFINE_EXT_OBJECT_RO(io_mem_opaque)
-    __DEFINE_EXT_OBJECT_RO(use_icount)
-    __DEFINE_EXT_OBJECT_RO(cpu_single_env)
-    __DEFINE_EXT_OBJECT_RO(loglevel)
-    __DEFINE_EXT_OBJECT_RO(logfile)
+    //TODO[J] stubbed
+//    __DEFINE_EXT_OBJECT_RO(io_mem_read)
+//    __DEFINE_EXT_OBJECT_RO(io_mem_write)
+//    //__DEFINE_EXT_OBJECT_RO(io_mem_opaque)
+//    __DEFINE_EXT_OBJECT_RO(use_icount)
+//    __DEFINE_EXT_OBJECT_RO(cpu_single_env)
+//    __DEFINE_EXT_OBJECT_RO(loglevel)
+//    __DEFINE_EXT_OBJECT_RO(logfile)
+    assert(false && "J stubbed");
 #ifdef TARGET_I386
     __DEFINE_EXT_OBJECT_RO_SYMB(parity_table)
     __DEFINE_EXT_OBJECT_RO_SYMB(rclw_table)
@@ -1226,7 +1249,7 @@ void S2EExecutor::registerRam(S2EExecutionState *initialState,
 #else
         mprotect((void*) hostAddress, size, PROT_NONE);
 #endif
-        m_unusedMemoryRegions.push_back(make_pair(hostAddress, size));
+        m_unusedMemoryRegions.push_back(std::make_pair(hostAddress, size));
     }
 
     initialState->m_memcache.registerPool(hostAddress, size);
@@ -1264,24 +1287,28 @@ void S2EExecutor::switchToConcrete(S2EExecutionState *state)
     if (m_forceConcretizations) {
         //XXX: Find a adhoc dirty way to implement overconstrained consistency model
         //There should be a consistency plugin somewhere else
-        s2e::plugins::ModuleExecutionDetector *md =
-                dynamic_cast<s2e::plugins::ModuleExecutionDetector*>(m_s2e->getPlugin("ModuleExecutionDetector"));
-        if (md && !md->getCurrentDescriptor(state)) {
 
-            if(!wos->isAllConcrete()) {
-                /* The object contains symbolic values. We have to
-               concretize it */
+        //TODO[J] stubbed
+//        s2e::plugins::ModuleExecutionDetector *md =
+//                dynamic_cast<s2e::plugins::ModuleExecutionDetector*>(m_s2e->getPlugin("ModuleExecutionDetector"));
+//        if (md && !md->getCurrentDescriptor(state)) {
+//
+//            if(!wos->isAllConcrete()) {
+//                /* The object contains symbolic values. We have to
+//               concretize it */
+//
+//                for(unsigned i = 0; i < wos->size; ++i) {
+//                    ref<Expr> e = wos->read8(i);
+//                    if(!isa<klee::ConstantExpr>(e)) {
+//                        uint8_t ch = toConstant(*state, e,
+//                                                "switching to concrete execution")->getZExtValue(8);
+//                        wos->write8(i, ch);
+//                    }
+//                }
+//            }
+//        }
 
-                for(unsigned i = 0; i < wos->size; ++i) {
-                    ref<Expr> e = wos->read8(i);
-                    if(!isa<klee::ConstantExpr>(e)) {
-                        uint8_t ch = toConstant(*state, e,
-                                                "switching to concrete execution")->getZExtValue(8);
-                        wos->write8(i, ch);
-                    }
-                }
-            }
-        }
+        assert(false && "J stubbed");
     }
 
     //assert(os->isAllConcrete());
@@ -1343,8 +1370,8 @@ void S2EExecutor::doLoadBalancing()
 
     std::vector<ExecutionState*> allStates;
 
-    foreach2(it, states.begin(), states.end()) {
-        S2EExecutionState *s2estate = static_cast<S2EExecutionState*>(*it);
+    for ( klee::ExecutionState *state : states )  {
+        S2EExecutionState *s2estate = static_cast<S2EExecutionState*>(state);
         if (!s2estate->isZombie()) {
             allStates.push_back(s2estate);
         }
@@ -1406,13 +1433,17 @@ void S2EExecutor::stateSwitchTimerCallback(void *opaque)
         }
     }
 
-    qemu_mod_timer(c->m_stateSwitchTimer, qemu_get_clock_ms(host_clock) + 100);
+    //TODO[J] stubbed
+//    qemu_mod_timer(c->m_stateSwitchTimer, qemu_get_clock_ms(host_clock) + 100);
+    assert(false && "J stubbed");
 }
 
 void S2EExecutor::initializeStateSwitchTimer()
 {
-    m_stateSwitchTimer = qemu_new_timer_ms(host_clock, &stateSwitchTimerCallback, this);
-    qemu_mod_timer(m_stateSwitchTimer, qemu_get_clock_ms(host_clock) + 100);
+    //TODO[J] stubbed
+//    m_stateSwitchTimer = qemu_new_timer_ms(host_clock, &stateSwitchTimerCallback, this);
+//    qemu_mod_timer(m_stateSwitchTimer, qemu_get_clock_ms(host_clock) + 100);
+    assert(false && "J stubbed");
 }
 
 void S2EExecutor::doStateSwitch(S2EExecutionState* oldState,
@@ -1432,7 +1463,9 @@ void S2EExecutor::doStateSwitch(S2EExecutionState* oldState,
     //Clear the asynchronous request queue, which is not saved as part of
     //the snapshots by QEMU. This is the same mechanism as used by
     //load/save_vmstate, so it should work reliably
-    qemu_aio_flush();
+    //TODO[J] stubbed
+//    qemu_aio_flush();
+    assert(false && "J stubbed");
     bdrv_flush_all();
     cpu_disable_ticks();
 
@@ -1457,7 +1490,9 @@ void S2EExecutor::doStateSwitch(S2EExecutionState* oldState,
         //copyInConcretes(*oldState);
         oldState->getDeviceState()->saveDeviceState();
         //oldState->m_qemuIcount = qemu_icount;
-        *oldState->m_timersState = timers_state;
+        //TODO[J] stubbed
+//        *oldState->m_timersState = timers_state;
+        assert(false && "J stubbed");
 
         uint8_t *oldStore = oldState->m_cpuSystemObject->getConcreteStore();
         memcpy(oldStore, (uint8_t*) cpuMo->address, cpuMo->size);
@@ -1466,29 +1501,33 @@ void S2EExecutor::doStateSwitch(S2EExecutionState* oldState,
     }
 
     if(newState) {
-        timers_state = *newState->m_timersState;
-        //qemu_icount = newState->m_qemuIcount;
+        //TODO[J] stubbed
 
-        jmp_buf jmp_env;
-        memcpy(&jmp_env, &env->jmp_env, sizeof(jmp_buf));
+//        timers_state = *newState->m_timersState;
+//        //qemu_icount = newState->m_qemuIcount;
+//
+//        jmp_buf jmp_env;
+//        memcpy(&jmp_env, &env->jmp_env, sizeof(jmp_buf));
+//
+//        const uint8_t *newStore = newState->m_cpuSystemObject->getConcreteStore();
+//        memcpy((uint8_t*) cpuMo->address, newStore, cpuMo->size);
+//
+//        memcpy(&env->jmp_env, &jmp_env, sizeof(jmp_buf));
+//
+//        newState->m_active = true;
+//
+//        //Devices may need to write to memory, which can be done
+//        //after the state is activated
+//        //XXX: assigning g_s2e_state here is ugly but is required for restoreDeviceState...
+//        g_s2e_state = newState;
+//        newState->getDeviceState()->restoreDeviceState();
+        assert(false && "J stubbed");
 
-        const uint8_t *newStore = newState->m_cpuSystemObject->getConcreteStore();
-        memcpy((uint8_t*) cpuMo->address, newStore, cpuMo->size);
-
-        memcpy(&env->jmp_env, &jmp_env, sizeof(jmp_buf));
-
-        newState->m_active = true;
-
-        //Devices may need to write to memory, which can be done
-        //after the state is activated
-        //XXX: assigning g_s2e_state here is ugly but is required for restoreDeviceState...
-        g_s2e_state = newState;
-        newState->getDeviceState()->restoreDeviceState();
     }
 
     uint64_t totalCopied = 0;
     uint64_t objectsCopied = 0;
-    foreach(MemoryObject* mo, m_saveOnContextSwitch) {
+    for( MemoryObject* mo : m_saveOnContextSwitch ) {
         if(mo == cpuMo)
             continue;
 
@@ -1556,7 +1595,7 @@ ExecutionState* S2EExecutor::selectNonSpeculativeState(S2EExecutionState *state)
 
     if (!newState) {
         m_s2e->getWarningsStream() << "All states were terminated" << '\n';
-        foreach(S2EExecutionState* s, m_deletedStates) {
+        for( S2EExecutionState* s : m_deletedStates ) {
             //Leave the current state in a zombie form to let QEMU exit gracefully.
             if (s != g_s2e_state) {
                 unrefS2ETb(s->m_lastS2ETb);
@@ -1617,7 +1656,7 @@ S2EExecutionState* S2EExecutor::selectNextState(S2EExecutionState *state)
 
     //We can't free the state immediately if it is the current state.
     //Do it now.
-    foreach(S2EExecutionState* s, m_deletedStates) {
+    for( S2EExecutionState* s : m_deletedStates ) {
         assert(s != newState);
         unrefS2ETb(s->m_lastS2ETb);
         s->m_lastS2ETb = NULL;
@@ -1634,8 +1673,7 @@ void S2EExecutor::prepareFunctionExecution(S2EExecutionState *state,
                             const std::vector<klee::ref<klee::Expr> > &args)
 {
     KFunction *kf;
-    typeof(kmodule->functionMap.begin()) it =
-            kmodule->functionMap.find(function);
+    auto it = kmodule->functionMap.find(function);
     if(it != kmodule->functionMap.end()) {
         kf = it->second;
     } else {
@@ -1719,7 +1757,9 @@ inline bool S2EExecutor::executeInstructions(S2EExecutionState *state, unsigned 
 
             //Handle the case where we killed the current state inside processFork
             if (m_forkProcTerminateCurrentState) {
-                state->writeCpuState(CPU_OFFSET(exception_index), EXCP_S2E, 8*sizeof(int));
+                //TODO[J] stubbed
+//                state->writeCpuState(CPU_OFFSET(exception_index), EXCP_S2E, 8*sizeof(int));
+                assert(false && "J stubbed");
                 state->zombify();
                 m_forkProcTerminateCurrentState = false;
                 return true;
@@ -1751,7 +1791,7 @@ bool S2EExecutor::finalizeTranslationBlockExec(S2EExecutionState *state)
 
     if (VerboseTbFinalize) {
         m_s2e->getDebugStream() << "Finalizing TB execution " << state->getID() << '\n';
-        foreach(const StackFrame& fr, state->stack) {
+        for( const StackFrame& fr : state->stack ) {
             m_s2e->getDebugStream() << fr.kf->function->getName().str() << '\n';
         }
     }
@@ -1823,20 +1863,29 @@ uintptr_t S2EExecutor::executeTranslationBlockKlee(
     ++state->m_stats.m_statTranslationBlockSymbolic;
 
     /* Generate LLVM code if necessary */
-    if(!tb->llvm_function) {
-        cpu_gen_llvm(env, tb);
-        assert(tb->llvm_function);
+    assert(tb->tcg_plugin_opaque);
+    if(!static_cast<TCGPluginTBData *>(tb->tcg_plugin_opaque)->llvm_function) {
+        assert(static_cast<TCGPluginTBData *>(tb->tcg_plugin_opaque)->tcg_llvm_context);
+        //TODO[J] stubbed
+//        static_cast<TCGPluginTBData *>(tb->tcg_plugin_opaque)->tcg_llvm_context->generateCode(
+//                tcg_ctx,
+//                , tb);
+//        cpu_gen_llvm(env, tb);
+//        assert(tb->llvm_function);
+        assert(false && "J stubbed");
     }
 
-    if(tb->s2e_tb != state->m_lastS2ETb) {
-        unrefS2ETb(state->m_lastS2ETb);
-        state->m_lastS2ETb = tb->s2e_tb;
-        state->m_lastS2ETb->refCount += 1;
-    }
+    //TODO[J] stubbed
+//    if(tb->s2e_tb != state->m_lastS2ETb) {
+//        unrefS2ETb(state->m_lastS2ETb);
+//        state->m_lastS2ETb = tb->s2e_tb;
+//        state->m_lastS2ETb->refCount += 1;
+//    }
+    assert(false && "J stubbed");
 
     /* Prepare function execution */
     prepareFunctionExecution(state,
-            tb->llvm_function, std::vector<ref<Expr> >(1,
+            static_cast<TCGPluginTBData *>(tb->tcg_plugin_opaque)->llvm_function, std::vector<ref<Expr> >(1,
                 Expr::createPointer((uint64_t) tb_function_args)));
 
     if (executeInstructions(state)) {
@@ -1858,21 +1907,23 @@ uintptr_t S2EExecutor::executeTranslationBlockConcrete(S2EExecutionState *state,
     ++state->m_stats.m_statTranslationBlockConcrete;
 
     uintptr_t ret = 0;
-    memcpy(s2e_cpuExitJmpBuf, env->jmp_env, sizeof(env->jmp_env));
-
-    if(s2e_setjmp(env->jmp_env)) {
-        memcpy(env->jmp_env, s2e_cpuExitJmpBuf, sizeof(env->jmp_env));
-        throw CpuExitException();
-    } else {
-
-        if(execute_llvm) {
-            ret = tcg_llvm_qemu_tb_exec(env, tb);
-        } else {
-            ret = tcg_qemu_tb_exec(env, tb->tc_ptr);
-        }
-    }
-
-    memcpy(env->jmp_env, s2e_cpuExitJmpBuf, sizeof(env->jmp_env));
+    //TODO[J] stubbed
+//    memcpy(s2e_cpuExitJmpBuf, env->jmp_env, sizeof(env->jmp_env));
+//
+//    if(s2e_setjmp(env->jmp_env)) {
+//        memcpy(env->jmp_env, s2e_cpuExitJmpBuf, sizeof(env->jmp_env));
+//        throw CpuExitException();
+//    } else {
+//
+//        if(execute_llvm) {
+//            ret = tcg_llvm_qemu_tb_exec(env, tb);
+//        } else {
+//            ret = tcg_qemu_tb_exec(env, tb->tc_ptr);
+//        }
+//    }
+//
+//    memcpy(env->jmp_env, s2e_cpuExitJmpBuf, sizeof(env->jmp_env));
+    assert(false && "J stubbed");
     return ret;
 }
 
@@ -1908,8 +1959,10 @@ static inline void s2e_tb_reset_jump(TranslationBlock *tb, unsigned int n)
         tb->jmp_next[n] = NULL;
 
         /* suppress the jump to next tb in generated code */
-        tb_set_jmp_target(tb, n, (uintptr_t)(tb->tc_ptr + tb->tb_next_offset[n]));
-        tb->s2e_tb_next[n] = NULL;
+        //TODO[J] stubbed
+//        tb_set_jmp_target(tb, n, (uintptr_t)(tb->tc_ptr + tb->tb_next_offset[n]));
+//        tb->s2e_tb_next[n] = NULL;
+        assert(false && "J stubbed");
     }
 }
 
@@ -1918,25 +1971,27 @@ static inline void s2e_tb_reset_jump(TranslationBlock *tb, unsigned int n)
 static void s2e_tb_reset_jump_smask(TranslationBlock* tb, unsigned int n,
                                            uint64_t smask, int depth = 0)
 {
-    TranslationBlock *tb1 = tb->s2e_tb_next[n];
-    sigset_t oldset;
-    if (depth == 0) {
-        s2e_disable_signals(&oldset);
-    }
-
-    if(tb1) {
-        if(depth > 2 || (smask & tb1->reg_rmask) || (smask & tb1->reg_wmask)
-                             || (tb1->helper_accesses_mem & 4)) {
-            s2e_tb_reset_jump(tb, n);
-        } else if(tb1 != tb) {
-            s2e_tb_reset_jump_smask(tb1, 0, smask, depth + 1);
-            s2e_tb_reset_jump_smask(tb1, 1, smask, depth + 1);
-        }
-    }
-
-    if (depth == 0) {
-        s2e_enable_signals(&oldset);
-    }
+    //TODO[J] stubbed
+//    TranslationBlock *tb1 = tb->s2e_tb_next[n];
+//    sigset_t oldset;
+//    if (depth == 0) {
+//        s2e_disable_signals(&oldset);
+//    }
+//
+//    if(tb1) {
+//        if(depth > 2 || (smask & tb1->reg_rmask) || (smask & tb1->reg_wmask)
+//                             || (tb1->helper_accesses_mem & 4)) {
+//            s2e_tb_reset_jump(tb, n);
+//        } else if(tb1 != tb) {
+//            s2e_tb_reset_jump_smask(tb1, 0, smask, depth + 1);
+//            s2e_tb_reset_jump_smask(tb1, 1, smask, depth + 1);
+//        }
+//    }
+//
+//    if (depth == 0) {
+//        s2e_enable_signals(&oldset);
+//    }
+    assert(false && "J stubbed");
 }
 
 uintptr_t S2EExecutor::executeTranslationBlock(
@@ -1971,32 +2026,34 @@ uintptr_t S2EExecutor::executeTranslationBlock(
 #if 1
             /* We can not execute TB natively if it reads any symbolic regs */
             uint64_t smask = state->getSymbolicRegistersMask();
-            if(smask || (tb->helper_accesses_mem & 4)) {
-                if((smask & tb->reg_rmask) || (smask & tb->reg_wmask)
-                         || (tb->helper_accesses_mem & 4)) {
-                    /* TB reads symbolic variables */
-                    executeKlee = true;
-
-                } else {
-                    s2e_tb_reset_jump_smask(tb, 0, smask);
-                    s2e_tb_reset_jump_smask(tb, 1, smask);
-
-                    /* XXX: check whether we really have to unlink the block */
-                    /*
-                    tb->jmp_first = (TranslationBlock *)((intptr_t)tb | 2);
-                    tb->jmp_next[0] = NULL;
-                    tb->jmp_next[1] = NULL;
-                    if(tb->tb_next_offset[0] != 0xffff)
-                        tb_set_jmp_target(tb, 0,
-                              (uintptr_t)(tb->tc_ptr + tb->tb_next_offset[0]));
-                    if(tb->tb_next_offset[1] != 0xffff)
-                        tb_set_jmp_target(tb, 1,
-                              (uintptr_t)(tb->tc_ptr + tb->tb_next_offset[1]));
-                    tb->s2e_tb_next[0] = NULL;
-                    tb->s2e_tb_next[1] = NULL;
-                    */
-                }
-            }
+            //TODO[J] stubbed
+//            if(smask || (tb->helper_accesses_mem & 4)) {
+//                if((smask & tb->reg_rmask) || (smask & tb->reg_wmask)
+//                         || (tb->helper_accesses_mem & 4)) {
+//                    /* TB reads symbolic variables */
+//                    executeKlee = true;
+//
+//                } else {
+//                    s2e_tb_reset_jump_smask(tb, 0, smask);
+//                    s2e_tb_reset_jump_smask(tb, 1, smask);
+//
+//                    /* XXX: check whether we really have to unlink the block */
+//                    /*
+//                    tb->jmp_first = (TranslationBlock *)((intptr_t)tb | 2);
+//                    tb->jmp_next[0] = NULL;
+//                    tb->jmp_next[1] = NULL;
+//                    if(tb->tb_next_offset[0] != 0xffff)
+//                        tb_set_jmp_target(tb, 0,
+//                              (uintptr_t)(tb->tc_ptr + tb->tb_next_offset[0]));
+//                    if(tb->tb_next_offset[1] != 0xffff)
+//                        tb_set_jmp_target(tb, 1,
+//                              (uintptr_t)(tb->tc_ptr + tb->tb_next_offset[1]));
+//                    tb->s2e_tb_next[0] = NULL;
+//                    tb->s2e_tb_next[1] = NULL;
+//                    */
+//                  }
+//              }
+            assert(false && "J stubbed");
 #else
             executeKlee |= !state->m_cpuRegistersObject->isAllConcrete();
 #endif
@@ -2014,7 +2071,9 @@ uintptr_t S2EExecutor::executeTranslationBlock(
 
         //XXX: adapt scaling dynamically.
         int slowdown = UseFastHelpers ? ClockSlowDownFastHelpers : ClockSlowDown;
-        cpu_enable_scaling(slowdown);
+        //TODO[J] stubbed
+//        cpu_enable_scaling(slowdown);
+        assert(false && "J stubbed");
 
         return executeTranslationBlockKlee(state, tb);
 
@@ -2027,11 +2086,13 @@ uintptr_t S2EExecutor::executeTranslationBlock(
             TimerStatIncrementer t(stats::concreteModeTime);
         }
 
-        int new_scaling = timers_state.clock_scale / 2;
-        if (new_scaling == 0) {
-            new_scaling = 1;
-        }
-        cpu_enable_scaling(new_scaling);
+        //TODO[J] stubbed
+//        int new_scaling = timers_state.clock_scale / 2;
+//        if (new_scaling == 0) {
+//            new_scaling = 1;
+//        }
+//        cpu_enable_scaling(new_scaling);
+        assert(false && "J stubbed");
 
         return executeTranslationBlockConcrete(state, tb);
     }
@@ -2115,8 +2176,8 @@ void S2EExecutor::deleteState(klee::ExecutionState *state)
 }
 
 void S2EExecutor::doStateFork(S2EExecutionState *originalState,
-                 const vector<S2EExecutionState*>& newStates,
-                 const vector<ref<Expr> >& newConditions)
+                 const std::vector<S2EExecutionState*>& newStates,
+                 const std::vector<ref<Expr> >& newConditions)
 {
     assert(originalState->m_active && !originalState->m_runningConcrete);
 
@@ -2140,7 +2201,7 @@ void S2EExecutor::doStateFork(S2EExecutionState *originalState,
 
     if (VerboseFork) {
         m_s2e->getDebugStream() << "Stack frame at fork:" << '\n';
-        foreach(const StackFrame& fr, originalState->stack) {
+        for( const StackFrame& fr : originalState->stack ) {
             m_s2e->getDebugStream() << fr.kf->function->getName().str() << '\n';
         }
     }
@@ -2192,7 +2253,9 @@ void S2EExecutor::notifyBranch(ExecutionState &state)
     S2EExecutionState *s2eState = dynamic_cast<S2EExecutionState*>(&state);
 
     /* Checkpoint the device state before branching */
-    qemu_aio_flush();
+    //TODO[J] stubbed
+//    qemu_aio_flush();
+    assert(false && "J stubbed");
     bdrv_flush_all();
     //s2eState->m_tlb.clearTlbOwnership();
 
@@ -2203,10 +2266,12 @@ void S2EExecutor::notifyBranch(ExecutionState &state)
 
     cpu_disable_ticks();
     s2eState->getDeviceState()->saveDeviceState();
-    *s2eState->m_timersState = timers_state;
+    //TODO[J] stubbed
+//    *s2eState->m_timersState = timers_state;
+    assert(false && "J stubbed");
     cpu_enable_ticks();
 
-    foreach(MemoryObject* mo, m_saveOnContextSwitch) {
+    for( MemoryObject* mo : m_saveOnContextSwitch ) {
         const ObjectState *os = s2eState->addressSpace.findObject(mo);
         ObjectState *wos = s2eState->addressSpace.getWriteable(mo, os);
         uint8_t *store = wos->getConcreteStore();
@@ -2216,8 +2281,8 @@ void S2EExecutor::notifyBranch(ExecutionState &state)
 }
 
 void S2EExecutor::branch(klee::ExecutionState &state,
-          const vector<ref<Expr> > &conditions,
-          vector<ExecutionState*> &result)
+          const std::vector<ref<Expr> > &conditions,
+          std::vector<ExecutionState*> &result)
 {
     S2EExecutionState *s2eState = dynamic_cast<S2EExecutionState*>(&state);
     assert(!s2eState->m_runningConcrete);
@@ -2226,8 +2291,8 @@ void S2EExecutor::branch(klee::ExecutionState &state,
 
     unsigned n = conditions.size();
 
-    vector<S2EExecutionState*> newStates;
-    vector<ref<Expr> > newConditions;
+    std::vector<S2EExecutionState*> newStates;
+    std::vector<ref<Expr> > newConditions;
 
     newStates.reserve(n);
     newConditions.reserve(n);
@@ -2299,8 +2364,10 @@ void S2EExecutor::terminateState(ExecutionState &s)
 
     //No need for exiting the loop if we kill another state.
     if (!m_inLoadBalancing && (&state == g_s2e_state)) {
-        state.writeCpuState(CPU_OFFSET(exception_index), EXCP_S2E, 8*sizeof(int));
-        qemu_mod_timer(m_stateSwitchTimer, qemu_get_clock_ms(rt_clock));
+        //TODO[J] stubbed
+//        state.writeCpuState(CPU_OFFSET(exception_index), EXCP_S2E, 8*sizeof(int));
+//        qemu_mod_timer(m_stateSwitchTimer, qemu_get_clock_ms(rt_clock));
+        assert(false && "J stubbed");
         throw CpuExitException();
     }
 }
@@ -2345,7 +2412,9 @@ void S2EExecutor::yieldState(ExecutionState &s)
     state.writeCpuState(CPU_CONC_LIMIT, state.getPc() + 10, CPU_REG_SIZE << 3);
 
     // Stop current execution
-    state.writeCpuState(CPU_OFFSET(exception_index), EXCP_S2E, 8*sizeof(int));
+    //TODO[J] stubbed
+//    state.writeCpuState(CPU_OFFSET(exception_index), EXCP_S2E, 8*sizeof(int));
+    assert(false && "J stubbed");
     throw CpuExitException();
 }
 
@@ -2413,7 +2482,9 @@ inline void S2EExecutor::doInterrupt(S2EExecutionState *state)
             executeFunction(state, "s2e_do_interrupt", args);
         } catch(s2e::CpuExitException&) {
             updateStates(state);
-            s2e_longjmp(env->jmp_env, 1);
+            //TODO[J] stubbed
+//            s2e_longjmp(env->jmp_env, 1);
+            assert(false && "J stubbed");
         }
     }
 
@@ -2500,7 +2571,7 @@ void S2EExecutor::unrefS2ETb(S2ETranslationBlock* s2e_tb)
             s2eDispatcher->removeFunction(s2e_tb->llvm_function);
             kmodule->removeFunction(s2e_tb->llvm_function);
         }
-        foreach(void* s, s2e_tb->executionSignals) {
+        for( void* s : s2e_tb->executionSignals ) {
             delete static_cast<ExecutionSignal*>(s);
         }
     }
@@ -2565,8 +2636,16 @@ void s2e_initialize_execution(S2E *s2e, S2EExecutionState *initial_state,
 {
     s2e->getExecutor()->initializeExecution(initial_state, execute_always_klee);
     //XXX: move it to better place (signal handler for this?)
-    tcg_register_helper((void*)&s2e_tcg_execution_handler, "s2e_tcg_execution_handler");
-    tcg_register_helper((void*)&s2e_tcg_custom_instruction_handler, "s2e_tcg_custom_instruction_handler");
+
+    //TODO[J] stubbed
+//    plgapi_register_helper(initial_state->get,
+//            s2e_tcg_execution_handler,
+//                    "tcgplugin_helper_intercept_qemu_ld_i32",
+//                    0 /* Can modify globals, can have side effects */,
+//                    dh_sizemask(i32, 0) | dh_sizemask(ptr, 1) | dh_sizemask(tl, 2) | dh_sizemask(i32, 3) | dh_sizemask(i32, 3));
+//    tcg_register_helper((void*)&s2e_tcg_execution_handler, "s2e_tcg_execution_handler");
+//    tcg_register_helper((void*)&s2e_tcg_custom_instruction_handler, "s2e_tcg_custom_instruction_handler");
+    assert(false && "J stubbed");
 }
 
 void s2e_register_cpu(S2E *s2e, S2EExecutionState *initial_state,
@@ -2605,7 +2684,9 @@ uintptr_t s2e_qemu_tb_exec(CPUArchState* env1, struct TranslationBlock* tb)
         return ret;
     } catch(s2e::CpuExitException&) {
         g_s2e->getExecutor()->updateStates(g_s2e_state);
-        s2e_longjmp(env->jmp_env, 1);
+        //TODO[J] stubbed
+//        s2e_longjmp(env->jmp_env, 1);
+        assert(false && "J stubbed");
     }
 }
 
@@ -2691,25 +2772,31 @@ void s2e_dma_write(uint64_t hostAddress, uint8_t *buf, unsigned size)
 
 void s2e_tb_alloc(S2E*, TranslationBlock *tb)
 {
-    tb->s2e_tb = new S2ETranslationBlock;
-    tb->s2e_tb->llvm_function = NULL;
-    tb->s2e_tb->refCount = 1;
-
-    /* Push one copy of a signal to use it as a cache */
-    tb->s2e_tb->executionSignals.push_back(new s2e::ExecutionSignal);
-
-    tb->s2e_tb_next[0] = 0;
-    tb->s2e_tb_next[1] = 0;
+    //TODO[J] stubbed
+//    tb->s2e_tb = new S2ETranslationBlock;
+//    tb->s2e_tb->llvm_function = NULL;
+//    tb->s2e_tb->refCount = 1;
+//
+//    /* Push one copy of a signal to use it as a cache */
+//    tb->s2e_tb->executionSignals.push_back(new s2e::ExecutionSignal);
+//
+//    tb->s2e_tb_next[0] = 0;
+//    tb->s2e_tb_next[1] = 0;
+    assert(false && "J stubbed");
 }
 
 void s2e_set_tb_function(S2E*, TranslationBlock *tb)
 {
-    tb->s2e_tb->llvm_function = tb->llvm_function;
+    //TODO[J] stubbed
+//    tb->s2e_tb->llvm_function = tb->llvm_function;
+    assert(false && "J stubbed");
 }
 
 void s2e_tb_free(S2E* s2e, TranslationBlock *tb)
 {
-    s2e->getExecutor()->unrefS2ETb(tb->s2e_tb);
+    //TODO[J] stubbed
+//    s2e->getExecutor()->unrefS2ETb(tb->s2e_tb);
+    assert(false && "J stubbed");
 }
 
 void s2e_flush_tlb_cache()
@@ -2722,7 +2809,9 @@ void s2e_kill_current_state(void)
 	try {
 		g_s2e->getExecutor()->terminateStateEarly(*g_s2e_state, "killing current state ...");
 	} catch (s2e::CpuExitException&) {
-		s2e_longjmp(env->jmp_env, 1);
+	    //TODO[J] stubbed
+//		s2e_longjmp(env->jmp_env, 1);
+	    assert(false && "J stubbed");
 	}
 }
 
