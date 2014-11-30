@@ -1622,12 +1622,14 @@ void tcg_llvm_gen_code(TCGLLVMContext *l, TCGContext *s, TranslationBlock *tb)
 
 void tcg_llvm_tb_alloc(TranslationBlock *tb)
 {
+    assert(tb->tcg_plugin_opaque);
     static_cast<TCGPluginTBData *>(tb->tcg_plugin_opaque)->tcg_llvm_context = NULL;
     static_cast<TCGPluginTBData *>(tb->tcg_plugin_opaque)->llvm_function = NULL;
 }
 
 void tcg_llvm_tb_free(TranslationBlock *tb)
 {
+    assert(tb->tcg_plugin_opaque);
     if(static_cast<TCGPluginTBData *>(tb->tcg_plugin_opaque)->llvm_function) {
         static_cast<TCGPluginTBData *>(tb->tcg_plugin_opaque)->llvm_function->eraseFromParent();
     }
