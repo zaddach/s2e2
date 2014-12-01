@@ -1,6 +1,9 @@
-[submodule "qemu"]
+[ubmodule "qemu"]
 	path = qemu
 	url = git@git.zaddach.org:fruitloops/qemu.git
 [submodule "klee"]
 	path = klee
 	url = git@git.zaddach.org:fruitloops/klee.git
+[submodule "test"]
+	path = test
+	url = git@git.zaddach.org:fruitloops/test.git
