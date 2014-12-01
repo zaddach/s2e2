@@ -1,11 +1,11 @@
-PROJECT ( llvm-translator )
+PROJECT ( s2e )
 CMAKE_MINIMUM_REQUIRED ( VERSION 2.8.8 FATAL_ERROR )
 
 
 # Configurable variables
 ########################
 
-SET ( LIBRARY_NAME "llvm_translator" )
+SET ( LIBRARY_NAME "s2e" )
 SET ( DEFAULT_BUILD_TYPE "Debug" )
 
 # Find requisites
@@ -175,3 +175,15 @@ FOREACH ( QEMU_TARGET ${QEMU_TARGETS} )
     GENERATE_HELPER_FILE (${OP_HELPER_LIB_NAME} "${OP_HELPER_DIRECTORY}" "${QEMU_TARGET_BASE_ARCH}" )
         
 ENDFOREACH ()
+
+# Include tests if the test subproject has been checked out
+IF ( EXISTS "${PROJECT_SOURCE_DIR}/test/CMakeLists.txt" )
+    SET ( S2E_BINARY_DIR "${PROJECT_BINARY_DIR}" )
+    SET ( QEMU_BINARY_DIR "${PROJECT_BINARY_DIR}/qemu" )
+    ADD_SUBDIRECTORY ( test )
+ELSE ()
+    MESSAGE ( STATUS "Tests have not been checked out, run \"git submodule update --init test\" and rerun cmake for tests" )
+ENDIF () 
+
+
+
