@@ -1,11 +1,11 @@
-PROJECT ( llvm-translator )
+PROJECT ( s2e )
 CMAKE_MINIMUM_REQUIRED ( VERSION 2.8.8 FATAL_ERROR )
 
 
 # Configurable variables
 ########################
 
-SET ( LIBRARY_NAME "llvm_translator" )
+SET ( LIBRARY_NAME "s2e" )
 SET ( DEFAULT_BUILD_TYPE "Debug" )
 
 # Find requisites
@@ -172,3 +172,7 @@ FOREACH ( QEMU_TARGET ${QEMU_TARGETS} )
     GENERATE_HELPER_FILE (${OP_HELPER_LIB_NAME} "${OP_HELPER_DIRECTORY}" "${QEMU_TARGET_BASE_ARCH}" )
         
 ENDFOREACH ()
+
+
+
+
