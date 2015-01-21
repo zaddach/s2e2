@@ -1,0 +1,51 @@
+syntax = "proto3";
+
+package trace;
+
+message PlatformInformation {
+  enum Endianness {
+    ENDIAN_BIG = 0;
+    ENDIAN_LITTLE = 1;
+  }
+  enum PointerSize {
+    POINTER_SIZE_32_BITS = 0;
+    POINTER_SIZE_64_BITS = 1;
+  }
+  Endianness code_endianness = 16;
+  Endianness data_endianness = 17;
+  PointerSize pointer_size = 18;
+  string architecture = 19;
+}
+
+message MemoryAccess {
+  enum Type {
+    READ = 0;
+    WRITE = 1;
+  }
+
+  enum Size {
+    INT_8 = 0;
+    INT_16 = 1;
+    INT_32 = 2;
+    INT_64 = 3;
+  }
+
+  Type type = 1;
+  Size size = 2;
+  uint64 address = 3;
+  uint64 value = 4;
+  uint32 mmu_index = 5;
+}
+
+message TraceHeader {
+  uint32 version = 1;
+  optional PlatformInformation platform_info = 2;
+}
+
+message TraceEvent {
+  oneof trace_event {
+    MemoryAccess memory_access = 8;
+  }
+}
+  
+  
