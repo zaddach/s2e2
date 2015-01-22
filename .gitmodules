@@ -1,4 +1,4 @@
-[ubmodule "qemu"]
+[submodule "qemu"]
 	path = qemu
 	url = git@git.zaddach.org:fruitloops/qemu.git
 [submodule "klee"]
