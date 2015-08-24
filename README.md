@@ -1,5 +1,5 @@
 # s2e2
-Code base for a version of S2E with more recent Qemu and Klee
+Code base for a version of [S2E][s2e] with more recent [Qemu][qemu] and [Klee][klee] versions.
 
 ##### Compiling this project #####
 
@@ -32,3 +32,6 @@ The CMake variables have the following effect:
 Afterwards, run *make* to build the project. Compiling might hang in the qemu build phase, just rerun *make* in
 this case (Unfixed bug in the build system).
   
+[s2e]: http://s2e.epfl.ch/
+[qemu]: http://qemu.org
+[klee]: https://klee.github.io/
