@@ -1,4 +1,9 @@
 # s2e2
+
+##### WARNING #####
+
+This project is for demonstration purposes only!!!!! Some parts of it might be reused, but it is not developed and not planned to be functional. If you are looking for a port of S2E to a newer qemu version, refer to [news2e](https://github.com/eurecom-s3/news2e).
+
 Code base for a version of [S2E][s2e] with more recent [Qemu][qemu] and [Klee][klee] versions.
 
 ##### Compiling this project #####
